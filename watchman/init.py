@@ -38,6 +38,12 @@ ceiling = 4000
 state_dir = "state"
 fail_after = 8
 
+[[expected]]               # when a job should fire and one file it touches; needs nothing else
+name = "nightly"
+schedule = "daily 03:00"
+evidence = "state/nightly-*.json"
+grace_minutes = 90
+
 [prompts]                  # mirrors of the scheduled prompts; set live_dir to compare bytes
 mirrors = ["tasks/*.md"]
 floor = 1

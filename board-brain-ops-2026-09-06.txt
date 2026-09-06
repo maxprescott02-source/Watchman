@@ -1,15 +1,16 @@
-[  ok  ] heartbeat              last run 0.0h ago reported 6 passed, 2 warned, 5 failed
-[  ok  ] stale-state            now.md folded through Entry 482 · 5 written inside the grace period · 502 entries scanned
-[ FAIL ] stated-vs-measured     CLAUDE.md:56 states ~1,300 tokens and names nothing this can measure; teach it or delete the number · CLAUDE.md:78 states ~48,000 tokens and names nothing this can measure; teach it or delete the number · README.md:83 states ~840 tokens and names nothing this can measure; teach it or delete the number · README.md:84 states ~400 tokens and names nothing this can measure; teach it or delete the number
+[  ok  ] heartbeat              last run 0.0h ago reported 6 passed, 2 warned, 6 failed
+[  ok  ] stale-state            now.md folded through Entry 482 · 9 written inside the grace period · 506 entries scanned
+[ FAIL ] stated-vs-measured     CLAUDE.md:56 states ~1,300 tokens and names nothing this can measure; teach it or delete the number · CLAUDE.md:78 states ~48,000 tokens and names nothing this can measure; teach it or delete the number · README.md:83 states ~840 tokens and names nothing this can measure; teach it or delete the number · README.md:84 states ~520 tokens and names nothing this can measure; teach it or delete the number
 [ FAIL ] degraded-steps         graph-daily step 16 degraded 14 consecutive nights (limit 8): skipped · suppressed by the session floor: -2179 tokens of headroom and a mark costs about 8. The headroom is the Sunday · 81 state file(s), 60 step(s) examined
+[ FAIL ] expected-run           1 job(s) fired with no evidence: evening entry (7pm): due Sun 19:00, no evidence at all. A schedule that says healthy is not evidence; the file the job touches is · 4 job(s) declared, 3 evidenced, 0 inside grace
 [ FAIL ] prompt-drift           2 dead path(s) in 9 prompt(s): tasks/brain-ops--weekly-model-maintenance.md -> skills/batch · tasks/brain-ops--weekly-model-maintenance.md -> tasks/SPEC.md
-[  ok  ] closed-sets            37 rows across 2 ledger(s), all in their closed sets
+[  ok  ] closed-sets            24 rows across 2 ledger(s), all in their closed sets
 [ warn ] intervention-tally     13 row(s) · newest 2026-09-06 (0d ago) · 3 awaiting disposition · last 14d: 9, the 14d before: 4. The rate is rising; each row is a rule that was never written
 [ warn ] absence                8 of 32 gone quiet against their own cadence (node names withheld from the public copy)
 [ FAIL ] append-only-log        duplicate entry numbers [12, 13, 16, 23, 25, 26, 27, 28]. Two writers each computed the next number; allocate under a lock
-[  ok  ] citation-resolves      1568 citation(s) in 250 file(s) all resolve against 486 entries
+[  ok  ] citation-resolves      1568 citation(s) in 250 file(s) all resolve against 490 entries
 [  ok  ] cannot-list            7 cannot(s) on file, all inside their re-test window
-[ FAIL ] read-budget            admin/commitments.md ~17,529 is opened whole and over 16,000; give it a query tool or split it · log/2026-08.md ~355,577 is past 250,000; behind a tool or not, that is a runaway
-[  ok  ] no-vacuous-pass        12 checks each declared a floor and met it
+[ FAIL ] read-budget            admin/commitments.md ~17,917 is opened whole and over 16,000; give it a query tool or split it · log/2026-08.md ~355,577 is past 250,000; behind a tool or not, that is a runaway
+[  ok  ] no-vacuous-pass        13 checks each declared a floor and met it
 
-6 passed · 2 warnings · 5 failed · 13 checks ran
+6 passed · 2 warnings · 6 failed · 14 checks ran

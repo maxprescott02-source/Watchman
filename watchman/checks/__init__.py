@@ -1,6 +1,6 @@
 """The register. A check is on when its config section exists; the order here is the board order."""
 from . import (absence, append_only_log, cannot_list, citation_resolves, closed_sets,
-               degraded_steps, intervention_tally, prompt_drift, read_budget,
+               degraded_steps, expected_run, intervention_tally, prompt_drift, read_budget,
                stale_state, stated_vs_measured)
 
 # (config section, module). read_budget and heartbeat are wired by the runner
@@ -9,6 +9,7 @@ REGISTER = [
     ("stale_state", stale_state),
     ("stated", stated_vs_measured),
     ("degraded", degraded_steps),
+    ("expected", expected_run),
     ("prompts", prompt_drift),
     ("ledgers", closed_sets),
     ("interventions", intervention_tally),

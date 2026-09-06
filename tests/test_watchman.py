@@ -43,7 +43,7 @@ class TestDemoBoard(Fixture):
     def test_mixed_board_as_designed(self):
         b = board(self.root)
         want = {"heartbeat": "WARN", "stale-state": "FAIL", "stated-vs-measured": "PASS",
-                "degraded-steps": "WARN", "prompt-drift": "PASS", "closed-sets": "FAIL",
+                "degraded-steps": "WARN", "expected-run": "PASS", "prompt-drift": "PASS", "closed-sets": "FAIL",
                 "intervention-tally": "WARN", "absence": "WARN", "append-only-log": "PASS",
                 "citation-resolves": "FAIL", "cannot-list": "WARN", "read-budget": "PASS",
                 "no-vacuous-pass": "PASS"}
@@ -52,7 +52,7 @@ class TestDemoBoard(Fixture):
 
     def test_count_is_computed_not_stated(self):
         text = report.render(list(board(self.root).values()))
-        self.assertIn("5 passed · 5 warnings · 3 failed · 13 checks ran", text)
+        self.assertIn("6 passed · 5 warnings · 3 failed · 14 checks ran", text)
 
     def test_json_output(self):
         data = json.loads(report.render_json(list(board(self.root).values())))
@@ -168,6 +168,46 @@ class TestChecks(Fixture):
         with open(os.path.join(self.root, "now.md"), "a") as fh:
             fh.write("x" * 20_000)
         self.assertIn("grew", board(self.root, write=False)["read-budget"].message)
+
+
+class TestExpectedRun(Fixture):
+    def _declare(self, schedule, evidence, extra=""):
+        with open(os.path.join(self.root, "watchman.toml"), "a", encoding="utf-8") as fh:
+            fh.write(f'\n[[expected]]\nname = "job"\nschedule = "{schedule}"\n'
+                     f'evidence = "{evidence}"\ngrace_minutes = 0\n{extra}')
+
+    def test_fresh_evidence_passes(self):
+        open(os.path.join(self.root, "touched.txt"), "w").close()
+        self._declare("daily 00:00", "touched.txt")
+        self.assertEqual(board(self.root, write=False)["expected-run"].status, "PASS")
+
+    def test_stale_evidence_fails(self):
+        p = os.path.join(self.root, "old.txt")
+        open(p, "w").close()
+        old = (datetime.datetime.now() - datetime.timedelta(days=3)).timestamp()
+        os.utime(p, (old, old))
+        self._declare("daily 00:00", "old.txt")
+        r = board(self.root, write=False)["expected-run"]
+        self.assertEqual(r.status, "FAIL")
+        self.assertIn("newest evidence", r.message)
+
+    def test_missing_evidence_fails(self):
+        self._declare("daily 00:00", "never.txt")
+        self.assertIn("no evidence at all", board(self.root, write=False)["expected-run"].message)
+
+    def test_cron_and_pattern(self):
+        stamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        with open(os.path.join(self.root, "runs.log"), "w") as fh:
+            fh.write(f"ran at {stamp} ok\n")
+        self._declare("0 0 * * *", "runs.log", 'pattern = "ran at (\\\\S+)"\n')
+        self.assertEqual(board(self.root, write=False)["expected-run"].status, "PASS")
+
+    def test_inside_grace_is_not_a_failure(self):
+        hhmm = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=5)).strftime("%H:%M")  # fixture runs at utc_offset 0
+        with open(os.path.join(self.root, "watchman.toml"), "a", encoding="utf-8") as fh:
+            fh.write(f'\n[[expected]]\nname = "job"\nschedule = "daily {hhmm}"\n'
+                     f'evidence = "never.txt"\ngrace_minutes = 60\n')
+        self.assertEqual(board(self.root, write=False)["expected-run"].status, "PASS")
 
 
 class TestPackage(unittest.TestCase):

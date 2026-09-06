@@ -6,7 +6,34 @@ Trace systems tell you whether a run behaved correctly. Watchman checks whether 
 
 It is for file-backed agents: the kind that run a person's or a small business's admin from scheduled prompts, append to a log, rebuild a summary file, and keep ledgers. Between runs, all that survives is the folder, and the next run trusts it. Watchman reads the folder and prints a board.
 
-It does not work over "any folder". It works over folders that follow the conventions `watchman.toml` describes, listed under **The contract** below. Pure standard library, Python 3.10 or later, no dependencies, one config file in the folder it watches. Version 0.1.0, frozen on 7 September 2026 for the prospective test described at the end.
+It does not work over "any folder". It works over folders that follow the conventions `watchman.toml` describes, listed under **The contract** below. Pure standard library, Python 3.10 or later, no dependencies, one config file in the folder it watches. Version 0.1.1, frozen on 7 September 2026 for the prospective test described at the end.
+
+## Sixty seconds: what it catches that a passing run does not
+
+Your nightly job rebuilds `now.md` from the log. Tonight the log reached Entry 482. The rebuild ran, exited 0, and wrote a file whose head still says `folded through Entry 470`, because the step that folds new entries skipped itself over a token budget and recorded the skip in a place nothing reads. Every session tomorrow opens `now.md` first and trusts it.
+
+Your run logs say: `nightly ok, 2.1s`. Your smoke test says: `now.md present, modified 03:02`. Watchman says:
+
+```
+[ FAIL ] stale-state   now.md folded through Entry 470, but 12 newer entries are not in it. Every session reads it without them
+[ FAIL ] degraded-steps nightly step 2-sweep degraded 1 night: skipped: floor over cap
+```
+
+Trace evals inspect what happened during a run. Watchman verifies durable state before another run trusts it. That is the whole difference, and it is why it needs no telemetry from the agent: it reads the files the agent already leaves.
+
+## If your scheduled task has ever silently stopped
+
+The check that needs nothing from your agent at all is `expected-run`. Declare when a job should fire and one file it touches:
+
+```toml
+[[expected]]
+name = "nightly close"
+schedule = "daily 03:00"          # or "weekdays 09:00", "mon,thu 18:30", or 5-field cron
+evidence = "reports/close-*.md"   # a glob it writes, or a log it appends to
+grace_minutes = 90
+```
+
+If the last expected fire has passed and nothing matching `evidence` was touched since, the board goes red with the time it was due. A scheduler that reports the task as enabled and healthy is not evidence; the file is. This is the detector for the pattern in anthropics/claude-code issues #55378 and #47899.
 
 ## Install
 
@@ -101,6 +128,8 @@ Each check descends from a specific defect. The one-line reason is the module's 
 11. **cannot-list.** A `cannots.md` of written-down "the tool cannot X" claims, each with a re-test date. An expired one warns; one with no date fails. Re-test a written-down cannot before obeying it.
 12. **read-budget.** Files an agent opens whole are capped at a token estimate, files behind a query tool at a much larger one, and growth past the previous run's recorded size fails.
 
+13. **expected-run.** A declared schedule and one file the job touches. Fails when the last expected fire has passed and the file was not touched since. The only check that needs no convention from the agent.
+
 And the mark that closes "nothing watches the watchman": every run writes a heartbeat with its timestamp, its counts and the sizes it measured. The next run reads it first; a second runner on a different schedule can call `watchman heartbeat` and fail on a stale or missing mark alone.
 
 ## The state files the degraded check reads
@@ -123,7 +152,7 @@ python3 -m unittest discover -s tests
 
 ## Prospective test
 
-Everything above is retrospective: a failure happened, a check was written, a similar failure was caught. That is the weakest kind of evidence. So this version is frozen at 0.1.0 from 7 September 2026 and runs unchanged, nightly, over the folder it came from until 5 October 2026. The result will be published as a confusion matrix: true positives, false positives, failures it missed, checks that never fired. `prospective-ledger.md` beside this file carries the columns and fills nightly.
+Everything above is retrospective: a failure happened, a check was written, a similar failure was caught. That is the weakest kind of evidence. So this version is frozen at 0.1.1 from 7 September 2026 (0.1.0 plus `expected-run`, added the same day before the window opened) and runs unchanged, nightly, over the folder it came from until 5 October 2026. The result will be published as a confusion matrix: true positives, false positives, failures it missed, checks that never fired. `prospective-ledger.md` beside this file carries the columns and fills nightly.
 
 ## Where it came from
 

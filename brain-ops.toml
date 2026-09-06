@@ -74,3 +74,29 @@ limit_tokens = 16000
 runaway_tokens = 250000
 session_floor = ["CLAUDE.md", "now.md", "skills/brain-ops.md"]
 session_floor_limit = 14000
+
+# expected-run: needs nothing from the agent but a schedule and a file it touches.
+[[expected]]
+name = "nightly sweep (1:30am)"
+schedule = "daily 01:30"
+evidence = "tools/.graph-state/graph-daily-*.json"
+grace_minutes = 120
+
+[[expected]]
+name = "morning brief (3am)"
+schedule = "daily 03:00"
+evidence = "tasks/briefs/*.html"
+grace_minutes = 120
+
+[[expected]]
+name = "4am sweeper"
+schedule = "daily 04:00"
+evidence = "tools/.graph-state/graph-sweeper-*.json"
+grace_minutes = 120
+
+[[expected]]
+name = "evening entry (7pm)"
+schedule = "daily 19:00"
+evidence = "log/2026-09.md"
+pattern = "^## (\\d{4}-\\d{2}-\\d{2}) .*Evening entry"
+grace_minutes = 240
