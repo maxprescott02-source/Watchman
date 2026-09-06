@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 .watchman/
 boards/
+WATCHMAN.md
 demo/.watchman/
 # internal strategy stays in brain-ops, not in the public repo
 spec.md

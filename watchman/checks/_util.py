@@ -19,13 +19,42 @@ class Result:
     input, found 2026-08-14).
     """
 
-    def __init__(self, check, status, message, population, floor=1):
+    def __init__(self, check, status, message, population, floor=1, items=None):
         self.check, self.status, self.message = check, status, message
         self.population, self.floor = population, floor
+        # items: the things this line is about, one dict each, so the runner can
+        # fold two lines about the same file or job into one incident. Keys:
+        # `keys` (a list like ["file:inbox-summary.md", "job:inbox-summary"]),
+        # `text` (the fact, short) and `action` (what the operator does).
+        self.items = list(items or [])
+        # set by the runner when the section that switched the check on is guessed
+        self.guessed = False
 
     def as_dict(self):
         return {"check": self.check, "status": self.status, "message": self.message,
-                "population": self.population, "floor": self.floor}
+                "population": self.population, "floor": self.floor, "guessed": self.guessed,
+                "items": self.items}
+
+
+def item(text, action, files=(), jobs=()):
+    """One thing a board line is about. `files` are paths relative to root, `jobs`
+    are job names; a file's stem is also a job key, so "inbox-summary.md" and the
+    job "inbox-summary" describe the same thing."""
+    keys = []
+    for f in files:
+        f = f.replace(os.sep, "/").rstrip("/")
+        keys.append("file:" + f)
+        stem = os.path.splitext(os.path.basename(f))[0]
+        if stem:
+            keys.append("job:" + stem.lower())
+    for j in jobs:
+        keys.append("job:" + j.strip().lower())
+    return {"keys": keys, "text": text, "action": action}
+
+
+def _plural(n, word, plural=None):
+    """`1 day`, `2 days`, `1 entry`, `2 entries`: the count and the word agree."""
+    return f"{n} {word if n == 1 else (plural or word + 's')}"
 
 
 def now(cfg):

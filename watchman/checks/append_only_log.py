@@ -4,7 +4,7 @@
 import datetime
 import os
 
-from ._util import Result, log_entries, today
+from ._util import log_entries, _plural, Result, today
 
 NAME = "append-only-log"
 
@@ -60,5 +60,5 @@ def run(cfg):
         if age > stale_days:
             return Result(NAME, "WARN", f"{len(rows)} entries, distinct and ascending, but the "
                           f"newest is {age}d old; the writers may have stopped", len(rows), floor)
-    return Result(NAME, "PASS", f"{len(rows)} entries across {len(by_file)} file(s), all "
+    return Result(NAME, "PASS", f"{len(rows)} entries across {_plural(len(by_file), 'file')}, all "
                   f"distinct and ascending · newest {newest}", len(rows), floor)

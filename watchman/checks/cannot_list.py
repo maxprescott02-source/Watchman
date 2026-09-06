@@ -3,7 +3,7 @@
 # prompt edit on the strength of a paragraph saying it was impossible; it was not.
 import os
 
-from ._util import Result, parse_date, read, table_rows, today
+from ._util import parse_date, _plural, read, Result, table_rows, today
 
 NAME = "cannot-list"
 
@@ -28,12 +28,12 @@ def run(cfg):
         elif due < t:
             expired.append(f"{claim[:40]!r} (due {due})")
     if undated:
-        return Result(NAME, "FAIL", f"{len(undated)} cannot(s) carry no re-test date: "
+        return Result(NAME, "FAIL", f"{_plural(len(undated), 'cannot')} carry no re-test date: "
                       f"{undated[:3]}. A cannot without a date is permanent by accident",
                       len(rows), 1)
     if expired:
-        return Result(NAME, "WARN", f"{len(expired)} of {len(rows)} cannot(s) past their "
+        return Result(NAME, "WARN", f"{len(expired)} of {_plural(len(rows), 'cannot')} past their "
                       f"re-test date: {'; '.join(expired[:3])}. Re-test a written-down "
                       f"cannot before obeying it", len(rows), 1)
-    return Result(NAME, "PASS", f"{len(rows)} cannot(s) on file, all inside their re-test "
+    return Result(NAME, "PASS", f"{_plural(len(rows), 'cannot')} on file, all inside their re-test "
                   f"window", len(rows), 1)

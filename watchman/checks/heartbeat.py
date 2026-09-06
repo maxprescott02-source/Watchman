@@ -18,12 +18,17 @@ def read(cfg):
         return None
 
 
-def write(cfg, results, sizes):
+def write(cfg, results, sizes, incidents=None):
+    """The mark: when, the counts, the sizes measured, and the open incidents so
+    the next run can say which are new and which are still there."""
     counts = {s: sum(1 for r in results if r.status == s) for s in ("PASS", "WARN", "FAIL")}
     os.makedirs(os.path.dirname(cfg.heartbeat) or ".", exist_ok=True)
     tmp = cfg.heartbeat + ".tmp"
+    open_incidents = [{"keys": i.keys, "since": i.since, "text": i.text, "short": i.short}
+                      for i in (incidents or []) if i.state != "resolved"]
     with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump({"ran_at": now(cfg).isoformat(), "counts": counts, "sizes": sizes}, fh, indent=1)
+        json.dump({"ran_at": now(cfg).isoformat(), "counts": counts, "sizes": sizes,
+                   "incidents": open_incidents}, fh, indent=1)
     os.replace(tmp, cfg.heartbeat)
 
 
@@ -41,17 +46,25 @@ def run(cfg, first_run_ok=True):
     max_age = float((cfg.section("watchman") or {}).get("heartbeat_max_age_hours", 30))
     hb = read(cfg)
     if hb is None:
-        status = "WARN" if first_run_ok else "FAIL"
-        return Result(NAME, status, f"no heartbeat at {cfg.rel(cfg.heartbeat)}; either this "
-                      f"is the first run or nothing has been running", 0, 0)
+        if first_run_ok:
+            # A first run is not a warning: there is nothing to compare against yet,
+            # and an operator reading amber on their first board reads it as a fault.
+            return Result(NAME, "PASS", "first run over this folder; the next run will "
+                          "compare against it", 0, 0)
+        return Result(NAME, "FAIL", f"no heartbeat at {cfg.rel(cfg.heartbeat)}; nothing has "
+                      f"been running. Run the board once by hand, then check the scheduler "
+                      f"that should be running it nightly.", 0, 0)
     age = age_hours(cfg, hb)
     if age is None:
-        return Result(NAME, "FAIL", "heartbeat present but its timestamp does not parse", 1, 1)
+        return Result(NAME, "FAIL", "heartbeat present but its timestamp does not parse. "
+                      f"Delete {cfg.rel(cfg.heartbeat)} and run the board again.", 1, 1)
     c = hb.get("counts", {})
     tail = (f"last run {age:.1f}h ago reported {c.get('PASS', '?')} passed, "
             f"{c.get('WARN', '?')} warned, {c.get('FAIL', '?')} failed")
     if age > max_age:
         return Result(NAME, "FAIL", f"heartbeat is {age:.0f}h old, limit {max_age:.0f}h. The "
-                      f"watchman stopped running and nothing else would have said so · {tail}",
-                      1, 1)
+                      f"watchman stopped running, or this machine was off or asleep, and "
+                      f"nothing else would have said so · {tail}. Check the scheduler that "
+                      f"runs watchman (crontab -l, or launchctl list on a Mac) and run the "
+                      f"board once by hand.", 1, 1)
     return Result(NAME, "PASS", tail, 1, 1)

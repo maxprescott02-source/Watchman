@@ -24,7 +24,8 @@ def board(root, write=True):
 class Fixture(unittest.TestCase):
     def setUp(self):
         self.root = tempfile.mkdtemp(prefix="watchman-")
-        self.today = datetime.date.today()
+        # the fixture's toml says utc_offset_hours = 0, so its "today" is the UTC day
+        self.today = datetime.datetime.now(datetime.timezone.utc).date()
         write_fixture(self.root, self.today)
 
     def tearDown(self):
@@ -42,7 +43,7 @@ class Fixture(unittest.TestCase):
 class TestDemoBoard(Fixture):
     def test_mixed_board_as_designed(self):
         b = board(self.root)
-        want = {"heartbeat": "WARN", "stale-state": "FAIL", "stated-vs-measured": "PASS",
+        want = {"heartbeat": "PASS", "stale-state": "FAIL", "stated-vs-measured": "PASS",
                 "degraded-steps": "WARN", "expected-run": "PASS", "prompt-drift": "PASS", "closed-sets": "FAIL",
                 "intervention-tally": "WARN", "absence": "WARN", "append-only-log": "PASS",
                 "citation-resolves": "FAIL", "cannot-list": "WARN", "read-budget": "PASS",
@@ -51,8 +52,9 @@ class TestDemoBoard(Fixture):
         self.assertEqual(report.exit_code(list(b.values())), 1)
 
     def test_count_is_computed_not_stated(self):
-        text = report.render(list(board(self.root).values()))
-        self.assertIn("6 passed · 5 warnings · 3 failed · 14 checks ran", text)
+        text = report.render(report.run_all(Config.load(self.root)))
+        self.assertIn("7 incidents (7 new) · 3 checks failed · 4 warned · 14 ran", text)
+        self.assertNotIn("unconfirmed", text)
 
     def test_json_output(self):
         data = json.loads(report.render_json(list(board(self.root).values())))
@@ -154,7 +156,7 @@ class TestChecks(Fixture):
     def test_intervene_cli_appends(self):
         with redirect_stdout(io.StringIO()):
             cli.main(["--root", self.root, "intervene", "fixed a heading", "--cost", "a turn"])
-        self.assertIn("6 row(s)", board(self.root, write=False)["intervention-tally"].message)
+        self.assertIn("6 rows", board(self.root, write=False)["intervention-tally"].message)
 
     def test_cannot_without_date_fails(self):
         self.edit("cannots.md", "| rename files on the mount |", "| rename files on the mount | |")

@@ -63,7 +63,7 @@ rising_floor = 3
 
 [absence]                  # files whose dated lines set their own cadence
 files = ["subjects/*.md"]
-min_dates = 3
+min_dates = 5
 factor = 2.0
 
 [citations]
@@ -129,7 +129,7 @@ def write_fixture(root, today, utc_offset=0):
     files["subjects/coffee.md"] = "# Coffee\n\n" + "".join(
         f"- {_d(t, d)}: grinder notes\n" for d in (16, 9, 2))
     files["subjects/pokemon.md"] = "# Pokemon\n\n" + "".join(
-        f"- {_d(t, d)}: set review\n" for d in (51, 44, 37, 30))
+        f"- {_d(t, d)}: set review\n" for d in (58, 51, 44, 37, 30))
     files["brain/notes.md"] = ("# Grinder choice\n\nChosen after reading (E002). The rego "
                                "deadline was moved (E009).\n")
     files["cannots.md"] = (

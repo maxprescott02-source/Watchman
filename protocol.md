@@ -4,7 +4,7 @@ Two ledgers, never blended.
 
 ## A. Prospective self-test (the author's folder, 7 Sep to 5 Oct 2026)
 
-Watchman 0.1.1, unchanged for the window. The 4am job saves the board nightly to `boards/<date>.txt`. The Sunday pass classifies each non-green line and each documented failure of the week:
+Watchman 0.2.0, unchanged for the window. (0.1.0 and 0.1.1 existed for one evening on 6 Sep before any nightly run; the outside review the same night produced 0.2.0, so the frozen version is 0.2.0 from the first nightly run on 7 Sep. Recorded as a break in the series in the ledger; no result predates it.) The 4am job saves the board nightly to `boards/<date>.txt`. The Sunday pass classifies each non-green line and each documented failure of the week:
 
 - **True positive**: the board went red or amber, and the log for that day or the next documents the failure it named.
 - **False positive**: it went red or amber and the Sunday pass, reading the evidence, rules nothing was wrong. The ruling and its reason are the row.

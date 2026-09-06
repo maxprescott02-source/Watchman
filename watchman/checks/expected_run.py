@@ -3,30 +3,53 @@
 # dropping fires for weeks while showing healthy) and brain-ops' liveness.json
 # (assertion 41, 2026-08-15). This check needs no conventions from the agent at all:
 # only a schedule and a path the job touches, which every job already has.
+import calendar
 import datetime
-import glob
 import os
 import re
 
-from ._util import Result, now
+from ._util import item, now, _plural, Result
 
 NAME = "expected-run"
 
 _WEEKDAYS = {"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6}
 _TIME = re.compile(r"^(\d{1,2}):(\d{2})$")
+_STAMP = re.compile(r"(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?")
+FORMS = ('"daily HH:MM", "weekdays HH:MM", "mon,thu HH:MM", "monthly 1 HH:MM", '
+         '"monthly last HH:MM", or five-field cron like "30 6 * * 1-5"')
 
 
 def _last_fire(schedule, at):
     """The most recent moment before `at` the schedule says the job should have
-    fired. Schedules: "daily HH:MM", "weekdays HH:MM", "mon,thu HH:MM", or a
-    five-field cron with plain numbers, lists and */n in the minute and hour
-    fields (the subset a scheduled-task UI actually produces)."""
+    fired. Schedules: "daily HH:MM", "weekdays HH:MM", "mon,thu HH:MM",
+    "monthly <day|last> HH:MM", or a five-field cron with plain numbers, lists,
+    ranges and */n in the minute, hour and weekday fields (the subset a
+    scheduled-task UI actually produces)."""
     parts = schedule.split()
+    if len(parts) == 3 and parts[0].lower() == "monthly" and _TIME.match(parts[2]):
+        hh, mm = (int(x) for x in _TIME.match(parts[2]).groups())
+        which = parts[1].lower()
+        if which != "last" and not which.isdigit():
+            raise ValueError(f"unreadable schedule {schedule!r}: after \"monthly\" give a "
+                             f"day of the month or \"last\"")
+        y, mo = at.year, at.month
+        for _ in range(3):
+            dom = calendar.monthrange(y, mo)[1] if which == "last" else min(int(which), calendar.monthrange(y, mo)[1])
+            t = datetime.datetime(y, mo, dom, hh, mm, tzinfo=at.tzinfo)
+            if t <= at:
+                return t
+            mo -= 1
+            if mo == 0:
+                y, mo = y - 1, 12
+        return None
     if len(parts) == 2 and _TIME.match(parts[1]):
         hh, mm = (int(x) for x in _TIME.match(parts[1]).groups())
         word = parts[0].lower()
-        days = (set(range(7)) if word == "daily" else set(range(5)) if word == "weekdays"
-                else {_WEEKDAYS[w[:3]] for w in word.split(",")})
+        try:
+            days = (set(range(7)) if word == "daily" else set(range(5)) if word == "weekdays"
+                    else {_WEEKDAYS[w[:3]] for w in word.split(",")})
+        except KeyError:
+            raise ValueError(f"unreadable schedule {schedule!r}: accepted forms are {FORMS}")
         for back in range(0, 8):
             d = at.date() - datetime.timedelta(days=back)
             t = datetime.datetime.combine(d, datetime.time(hh, mm), tzinfo=at.tzinfo)
@@ -34,14 +57,15 @@ def _last_fire(schedule, at):
                 return t
         return None
     if len(parts) == 5:
-        mins, hours, _dom, _mon, dows = parts
-        for back in range(0, 8 * 24 * 60):
+        mins, hours, dom, _mon, dows = parts
+        for back in range(0, 32 * 24 * 60):
             t = (at - datetime.timedelta(minutes=back)).replace(second=0, microsecond=0)
             if (_cron_match(mins, t.minute, 0, 59) and _cron_match(hours, t.hour, 0, 23)
+                    and _cron_match(dom, t.day, 1, 31)
                     and _cron_match(dows, (t.weekday() + 1) % 7, 0, 6)):
                 return t
         return None
-    raise ValueError(f"unreadable schedule {schedule!r}")
+    raise ValueError(f"unreadable schedule {schedule!r}: accepted forms are {FORMS}")
 
 
 def _cron_match(field, value, lo, hi):
@@ -89,20 +113,44 @@ def _evidence_time(cfg, spec, since):
             if newest is None or when > newest:
                 newest = when
     if newest is None:
-        return False, "no evidence at all"
+        if pattern:
+            return False, f"nothing in {spec['evidence']} matches pattern {pattern!r}"
+        return False, f"{spec['evidence']} does not exist (no evidence at all)"
     return newest >= since, f"newest evidence {newest.strftime('%Y-%m-%d %H:%M')}"
 
 
 def _parse_stamp(s, tz):
-    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
-        try:
-            return datetime.datetime.strptime(s[:len(fmt) + 2], fmt).replace(tzinfo=tz)
-        except ValueError:
-            continue
-    try:
-        return datetime.datetime.fromisoformat(s).astimezone(tz)
-    except (ValueError, TypeError):
+    """A date, with or without a time, anywhere at the start of the captured text."""
+    m = _STAMP.match((s or "").strip())
+    if not m:
         return None
+    try:
+        d = datetime.date.fromisoformat(m.group(1))
+        t = datetime.time(int(m.group(2) or 0), int(m.group(3) or 0), int(m.group(4) or 0))
+    except ValueError:
+        return None
+    return datetime.datetime.combine(d, t, tzinfo=tz)
+
+
+def _silent_fact(name, due, ev, why):
+    """The fact, without a cause: from the folder, a job that never fired, a
+    machine that was asleep and a job that ran but wrote nothing look the same."""
+    return (f"{name} left no expected evidence for its {due} run ({why}): it may not have "
+            f"run, this machine may have been off or asleep, or it may have run without "
+            f"updating {ev}")
+
+
+def _re_run(silent):
+    """The action for silent jobs: look at the job, rerun it if that is safe, and if
+    it did run, look at why the evidence did not move."""
+    if len(silent) == 1:
+        name, _due, ev, _why = silent[0]
+        return (f"Check the {name} job. If it is safe to rerun, run it now; if it already "
+                f"ran, check why {ev} was not updated.")
+    names = " and ".join(n for n, _, _, _ in silent)
+    files = " and ".join(sorted({ev for _, _, ev, _ in silent}))
+    return (f"Check the {names} jobs. If they are safe to rerun, run them now; if they "
+            f"already ran, check why {files} were not updated.")
 
 
 def run(cfg):
@@ -110,31 +158,67 @@ def run(cfg):
     if isinstance(specs, dict):
         specs = [specs]
     at = now(cfg)
-    silent, waiting, ok = [], [], 0
+    silent, unconfirmed, broken, waiting, ok, items = [], [], [], [], 0, []
     for spec in specs:
         name = spec.get("name", spec.get("evidence", "?"))
-        try:
-            last = _last_fire(spec["schedule"], at)
-        except (ValueError, KeyError) as exc:
-            silent.append(f"{name}: {exc}")
-            continue
-        if last is None:
-            silent.append(f"{name}: schedule {spec['schedule']!r} never fires")
-            continue
-        grace = datetime.timedelta(minutes=int(spec.get("grace_minutes", 90)))
-        if at < last + grace:
-            waiting.append(name)
-            continue
-        found, why = _evidence_time(cfg, spec, last)
-        if found:
-            ok += 1
+        for key in ("schedule", "evidence"):
+            if key not in spec:
+                broken.append((name, f"{name}: no `{key} =` line in its [[expected]] block"))
+                break
         else:
-            silent.append(f"{name}: due {last.strftime('%a %H:%M')}, {why}")
+            try:
+                last = _last_fire(spec["schedule"], at)
+            except ValueError as exc:
+                broken.append((name, f"{name}: {exc}"))
+                continue
+            if last is None:
+                broken.append((name, f"{name}: schedule {spec['schedule']!r} never fires"))
+                continue
+            grace = datetime.timedelta(minutes=int(spec.get("grace_minutes", 90)))
+            if at < last + grace:
+                waiting.append(name)
+                continue
+            found, why = _evidence_time(cfg, spec, last)
+            if found:
+                ok += 1
+                continue
+            due = last.strftime("%a %d %b %H:%M")
+            fact = _silent_fact(name, due, spec["evidence"], why)
+            row = (name, due, spec["evidence"], why)
+            (unconfirmed if spec.get("guessed") else silent).append(row)
+            action = _re_run([row])
+            if spec.get("guessed"):
+                action = (f"Confirm the schedule for {name} in watchman.toml (`watchman "
+                          f"confirm`), then " + action[0].lower() + action[1:])
+            items.append(item(fact, action, files=[spec["evidence"]], jobs=[name]))
     n = len(specs)
-    tail = f" · {n} job(s) declared, {ok} evidenced, {len(waiting)} inside grace"
-    if silent:
-        return Result(NAME, "FAIL", f"{len(silent)} job(s) fired with no evidence: "
-                      f"{'; '.join(silent[:3])}. A schedule that says healthy is not "
-                      f"evidence; the file the job touches is" + tail, n, 1)
+    zone = f"UTC{cfg.utc_offset:+.0f}" if cfg.utc_offset else "UTC"
+    tail = (f" · {_plural(n, 'job')} declared, {ok} evidenced, {len(waiting)} inside grace"
+            f" · times are {zone}")
+    if silent or broken or unconfirmed:
+        msg, actions = [], []
+        if silent:
+            msg.append(f"{_plural(len(silent), 'job')} fired with no evidence: "
+                       + "; ".join(_silent_fact(nm, d, ev, why) for nm, d, ev, why in silent[:3])
+                       + ". A scheduler that says healthy is not sufficient evidence; the "
+                       "file the job touches is")
+            actions.append(_re_run(silent))
+        if unconfirmed:
+            msg.append(f"unconfirmed: {_plural(len(unconfirmed), 'guessed job')} with no evidence: "
+                       + "; ".join(f"{nm} due {d} ({why})" for nm, d, _ev, why in unconfirmed[:3]))
+            actions.append(f"Confirm the guessed {'schedule' if len(unconfirmed) == 1 else 'schedules'} in watchman.toml (`watchman "
+                           f"confirm`), then check "
+                           + " and ".join(nm for nm, _, _, _ in unconfirmed) + ".")
+        if broken:
+            msg.append(f"{_plural(len(broken), 'job')} could not be checked: "
+                       + "; ".join(b for _, b in broken[:3]))
+            actions.append("Fix the [[expected]] block for "
+                           + " and ".join(nm for nm, _ in broken) + " in watchman.toml; "
+                           "`watchman doctor` names the line.")
+            for nm, b in broken:
+                items.append(item(b, actions[-1], jobs=[nm]))
+        status = "FAIL" if (silent or broken) else "WARN"
+        return Result(NAME, status, " · ".join(msg) + tail + ". " + " ".join(actions), n, 1,
+                      items=items)
     return Result(NAME, "PASS", "every declared job left evidence after its last expected "
                   "fire" + tail, n, 1)

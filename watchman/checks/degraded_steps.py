@@ -6,7 +6,7 @@ import glob
 import json
 import os
 
-from ._util import Result, parse_date
+from ._util import parse_date, _plural, Result
 
 NAME = "degraded-steps"
 
@@ -54,7 +54,7 @@ def run(cfg):
                 n, cur = n + 1, cur - datetime.timedelta(days=1)
             if n:
                 runs[(job, step)] = (n, str(days[newest]["done"][step].get("result", ""))[:120])
-    tail = f" · {len(states)} state file(s), {steps} step(s) examined"
+    tail = f" · {_plural(len(states), 'state file')}, {_plural(steps, 'step')} examined"
     if missing:
         return Result(NAME, "FAIL", "; ".join(missing) + ". An ended job without its "
                       "primary artefact is a run that printed complete over nothing" + tail,
@@ -67,7 +67,7 @@ def run(cfg):
     if runs:
         (j, s) = max(runs, key=lambda k: runs[k][0])
         n, why = runs[(j, s)]
-        return Result(NAME, "WARN", f"{len(runs)} step(s) degraded, longest {j} step {s} "
+        return Result(NAME, "WARN", f"{_plural(len(runs), 'step')} degraded, longest {j} step {s} "
                       f"at {n} of {fail_after} nights: {why}" + tail, len(states), 1)
     return Result(NAME, "PASS", "no step is skipping because it could not do its job" + tail,
                   len(states), 1)

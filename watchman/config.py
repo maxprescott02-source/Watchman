@@ -24,10 +24,18 @@ class Config:
     def load(cls, root, config=None):
         p = config or os.path.join(root, FILENAME)
         if not os.path.exists(p):
-            raise SystemExit(f"no {FILENAME} in {os.path.abspath(root)}. "
-                             f"Run `watchman init {root}` to write a starter.")
+            raise SystemExit(f"no {FILENAME} in {os.path.abspath(root)}. Run "
+                             f"`watchman init --discover {root}` to propose one from the "
+                             f"files that are there, then `watchman doctor --root {root}` "
+                             f"to see what each section can check.")
         with open(p, "rb") as fh:
-            return cls(root, tomllib.loads(fh.read().decode("utf-8")))
+            try:
+                data = tomllib.loads(fh.read().decode("utf-8"))
+            except Exception as exc:                                  # noqa: BLE001
+                raise SystemExit(f"{p} is not readable as TOML: {exc}. Every line is "
+                                 f"`key = value`, strings in quotes, sections in [brackets]; "
+                                 f"`watchman doctor` cannot run until it parses.")
+            return cls(root, data)
 
     def section(self, name):
         return self.data.get(name)
@@ -49,9 +57,20 @@ class Config:
 
     @property
     def utc_offset(self):
-        return float(self.data.get("watchman", {}).get("utc_offset_hours", 0))
+        """Hours east of UTC. Unset means this machine's own zone: an operator
+        reading "due 06:00" expects their own clock, not Greenwich."""
+        w = self.data.get("watchman", {})
+        if "utc_offset_hours" in w:
+            return float(w["utc_offset_hours"])
+        return local_utc_offset()
 
     @property
     def heartbeat(self):
         w = self.data.get("watchman", {})
         return self.path(w.get("heartbeat", ".watchman/heartbeat.json"))
+
+
+def local_utc_offset():
+    import datetime
+    off = datetime.datetime.now().astimezone().utcoffset()
+    return off.total_seconds() / 3600 if off else 0.0

@@ -4,7 +4,7 @@
 import re
 import subprocess
 
-from ._util import Result, log_entries, read, tokens
+from ._util import log_entries, _plural, read, Result, tokens
 
 NAME = "stated-vs-measured"
 TOKENS = re.compile(r"~\s*([\d][\d,]*)\s*(k?)\s*tokens?\b", re.I)
@@ -71,6 +71,6 @@ def run(cfg):
     pop = len(measured) + claims
     if problems:
         return Result(NAME, "FAIL", " · ".join(problems[:4]), pop, 1)
-    return Result(NAME, "PASS", f"{len(measured)} measurable(s) under ceiling "
-                  f"({' · '.join(notes)}) · {claims} stated number(s) all within "
+    return Result(NAME, "PASS", f"{_plural(len(measured), 'measurable')} under ceiling "
+                  f"({' · '.join(notes)}) · {_plural(claims, 'stated number')} all within "
                   f"{int(tol * 100)}%", pop, 1)

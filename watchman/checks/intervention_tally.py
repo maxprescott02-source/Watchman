@@ -5,7 +5,7 @@ import datetime
 import os
 import re
 
-from ._util import Result, parse_date, read, today
+from ._util import parse_date, _plural, read, Result, today
 
 NAME = "intervention-tally"
 DISPOSITIONS = ("Rule", "Assertion", "Tool change", "Accepted", "Void")
@@ -85,7 +85,7 @@ def run(cfg):
     newest = max(r["date"] for r in rs)
     age = (t - (parse_date(newest) or t)).days
     open_ = sum(1 for r in rs if not r["disposition"])
-    msg = (f"{len(rs)} row(s) · newest {newest} ({age}d ago) · {open_} awaiting disposition · "
+    msg = (f"{_plural(len(rs), 'row')} · newest {newest} ({age}d ago) · {open_} awaiting disposition · "
            f"last {window}d: {recent}, the {window}d before: {prior}")
     if recent > prior and recent >= int(c.get("rising_floor", 3)):
         return Result(NAME, "WARN", msg + ". The rate is rising; each row is a rule that "

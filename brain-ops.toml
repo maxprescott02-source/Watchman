@@ -3,6 +3,7 @@
 utc_offset_hours = 10
 heartbeat = ".watchman/heartbeat.json"
 heartbeat_max_age_hours = 30
+attention_file = "projects/watchman/WATCHMAN.md"    # the brain-ops root allows three files, so the morning file lives here
 
 [log]
 files = ["log/2026-09.md", "log/2026-08.md", "log/archive/log-sealed-2026-08-12.md"]

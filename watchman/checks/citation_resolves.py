@@ -3,7 +3,7 @@
 # assumption the append would allocate 299; it allocated 311, and both numbers resolved.
 import re
 
-from ._util import Result, log_entries, read
+from ._util import log_entries, _plural, read, Result
 
 NAME = "citation-resolves"
 
@@ -21,8 +21,8 @@ def run(cfg):
                 if int(m.group(1)) not in known:
                     unresolved.append(f"{cfg.rel(p)}:{i} {m.group(0)}")
     if unresolved:
-        return Result(NAME, "FAIL", f"{len(unresolved)} of {total} citation(s) resolve to no "
+        return Result(NAME, "FAIL", f"{len(unresolved)} of {_plural(total, 'citation')} resolve to no "
                       f"entry: {', '.join(unresolved[:6])}. Read the number back after the "
                       f"append; never assume what it will allocate", total, 1)
-    return Result(NAME, "PASS", f"{total} citation(s) in {len(files)} file(s) all resolve "
+    return Result(NAME, "PASS", f"{_plural(total, 'citation')} in {_plural(len(files), 'file')} all resolve "
                   f"against {len(known)} entries", total, 1)

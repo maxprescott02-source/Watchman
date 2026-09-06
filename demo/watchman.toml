@@ -48,7 +48,7 @@ rising_floor = 3
 
 [absence]                  # files whose dated lines set their own cadence
 files = ["subjects/*.md"]
-min_dates = 3
+min_dates = 5
 factor = 2.0
 
 [citations]
