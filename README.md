@@ -6,6 +6,10 @@ The case study this comes from: [29 days of file-backed agents: 125 documented f
 
 It is for file-backed agents: the kind that run a person's or a small business's admin from scheduled prompts, append to a log, rebuild a summary file, and keep ledgers. Between runs, all that survives is the folder, and the next run trusts it. Watchman reads the folder and prints a board. Pure standard library, Python 3.10 or later, no dependencies, one config file in the folder it watches, and it proposes that file itself. Version 0.2.0: incidents with state across nights, `WATCHMAN.md`, and `install`, added 7 September 2026 after an outside review of the onboarding. The checks are the 0.1.1 set from the prospective test described at the end; what changed is how their findings are folded and worded, that `absence` wants five dated files before it calls a cadence, and that a guessed section cannot fail.
 
+## Who it is for
+
+One operator with two to ten scheduled jobs that each leave a file behind (a summary, a close, a ledger, a log line), running Claude Cowork, Claude for Small Business, ChatGPT Work or an OpenClaw-style agent, who has already been burnt by a stale output nobody noticed. And the consultant who set that up for five to fifty clients and carries the blame when it drifts. If you have an observability platform and an engineer to wire it, LangSmith, Braintrust, Langfuse or Arize will do most of this over traces; watchman is for the folder with nobody watching it. If you use Cowork's own scheduler and will not touch cron, `launch/cowork-task-prompt.md` has a task you can paste.
+
 ## Sixty seconds: what it catches that a passing run does not
 
 Your nightly job rebuilds `now.md` from the log. Tonight the log reached Entry 482. The rebuild ran, exited 0, and wrote a file whose head still says `folded through Entry 470`, because the step that folds new entries skipped itself over a token budget and recorded the skip in a place nothing reads. Every session tomorrow opens `now.md` first and trusts it.
