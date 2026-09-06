@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.watchman/
+boards/
+demo/.watchman/
+# internal strategy stays in brain-ops, not in the public repo
+spec.md
+research-*.md
+launch/

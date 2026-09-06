@@ -1,0 +1,67 @@
+# watchman.toml. Every section switches on one check; delete a section to turn it off.
+[watchman]
+utc_offset_hours = 0
+heartbeat = ".watchman/heartbeat.json"
+heartbeat_max_age_hours = 30
+
+[log]                      # append-only-log, and the source every other check reads
+files = ["log/*.md"]
+heading = '^##\s+(?P<date>\d{4}-\d{2}-\d{2}).*?Entry\s+(?P<n>\d+)'
+write_to = "log/2026-09.md"
+write_format = "## {date} Entry {n} {title}"
+floor = 1
+quiet_days = 3
+
+[stale_state]              # the read-first file, measured against the log by marker
+file = "now.md"
+marker = 'folded through Entry (\d+)'
+grace_days = 1
+
+[stated]                   # numbers in prose that the folder can measure
+files = ["docs/*.md", "now.md"]
+tolerance = 0.30
+[[stated.measure]]
+name = "now.md"
+file = "now.md"
+ceiling = 4000
+
+[degraded]                 # step-state JSON written by scheduled jobs
+state_dir = "state"
+fail_after = 8
+
+[prompts]                  # mirrors of the scheduled prompts; set live_dir to compare bytes
+mirrors = ["tasks/*.md"]
+floor = 1
+# live_dir = "~/Claude/Scheduled"
+
+[[ledgers]]                # closed sets of states; the heading is the state
+file = "admin/commitments.md"
+key = "ID"
+id = "C\d{3}"
+states = ["Open", "Done", "Dropped", "Void"]
+
+[interventions]
+file = "interventions.md"
+stale_days = 14
+window_days = 14
+rising_floor = 3
+
+[absence]                  # files whose dated lines set their own cadence
+files = ["subjects/*.md"]
+min_dates = 3
+factor = 2.0
+
+[citations]
+files = ["brain/**/*.md"]
+pattern = '\bE(\d{3,})\b'
+
+[cannots]
+file = "cannots.md"
+
+[read_budget]
+opened_whole = ["now.md", "docs/*.md", "tasks/*.md"]
+behind_a_tool = ["log/*.md"]
+limit_tokens = 16000
+runaway_tokens = 250000
+session_floor = ["now.md"]
+session_floor_limit = 14000

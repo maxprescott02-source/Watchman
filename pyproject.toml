@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "watchman"
+version = "0.1.0"
+description = "A reliability layer for long-running AI agents that operate on a folder of files."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = []
+
+[project.scripts]
+watchman = "watchman.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["watchman", "watchman.checks"]

@@ -1,0 +1,15 @@
+{
+ "job": "nightly",
+ "day": "2026-09-05",
+ "ended": true,
+ "artefact": "now.md",
+ "done": {
+  "1-rebuild": {
+   "result": "rebuilt now.md"
+  },
+  "2-sweep": {
+   "result": "skipped \u00b7 DEGRADED: session floor over cap",
+   "degraded": true
+  }
+ }
+}

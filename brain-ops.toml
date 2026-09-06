@@ -1,0 +1,76 @@
+# watchman over brain-ops itself. Lives here because the brain-ops root allows three files. Run: python3 -m watchman --root ~/Desktop/brain-ops --config ~/Desktop/brain-ops/projects/watchman/brain-ops.toml
+[watchman]
+utc_offset_hours = 10
+heartbeat = ".watchman/heartbeat.json"
+heartbeat_max_age_hours = 30
+
+[log]
+files = ["log/2026-09.md", "log/2026-08.md", "log/archive/log-sealed-2026-08-12.md"]
+heading = "^##\\s+(?P<date>\\d{4}-\\d{2}-\\d{2})\\s+\u2014\\s+Entry\\s+(?P<n>\\d+)"  # the log keeps its em dashes; \u2014 keeps them out of this file
+write_to = "log/2026-09.md"
+write_format = "## {date} \u2014 Entry {n} \u2014 {title}"
+floor = 1
+quiet_days = 2
+
+[stale_state]
+file = "now.md"
+marker = 'folded through Entry (\d+)'
+grace_days = 1
+
+[stated]
+files = ["CLAUDE.md", "README.md"]
+tolerance = 0.30
+[[stated.measure]]
+name = "now.md"
+file = "now.md"
+ceiling = 16000
+
+[degraded]
+state_dir = "tools/.graph-state"
+fail_after = 8
+degraded_marker = "DEGRADED:"
+
+[prompts]
+mirrors = ["tasks/brain-ops--*.md", "tasks/evening-entry.md", "tasks/sweeper.md"]
+floor = 1
+# Paths named in prose about the 14 Aug rename, not paths the prompt uses.
+exempt = ["10-self/", "20-ledgers/", "log.md", "subjects.md", "job-search.md", "harness-audit-2026-08-12.html"]
+
+[[ledgers]]
+file = "admin/commitments.md"
+key = "ID"
+id = "[CD]\d{3}"
+states = ["Open", "Overdue", "Undated", "Needs a decision", "Waiting on someone else", "Resolved from Needs a decision", "Done", "Dropped", "Passed", "Cancelled", "Void"]
+
+[[ledgers]]
+file = "admin/intentions.md"
+key = "ID"
+id = "I\d{3}"
+states = ["Waiting", "Anchored", "Done", "Satisfied", "Withdrawn", "Let go"]
+
+[interventions]
+file = "projects/brain-ops/interventions.md"
+stale_days = 14
+window_days = 14
+rising_floor = 3
+
+[absence]
+files = ["brain/*.md"]
+min_dates = 3
+factor = 2.0
+
+[citations]
+files = ["brain/*.md", "me/*.md"]
+pattern = '\bE(\d{3,})\b'
+
+[cannots]
+file = "projects/brain-ops/cannots.md"
+key = "Cannot"
+
+[read_budget]
+opened_whole = ["CLAUDE.md", "now.md", "skills/brain-ops.md", "admin/commitments.md", "admin/intentions.md"]
+behind_a_tool = ["log/2026-09.md", "log/2026-08.md", "log/archive/log-sealed-2026-08-12.md"]
+limit_tokens = 16000
+runaway_tokens = 250000
+session_floor = ["CLAUDE.md", "now.md", "skills/brain-ops.md"]
+session_floor_limit = 14000
