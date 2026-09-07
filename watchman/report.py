@@ -126,22 +126,55 @@ def _items(results):
     return out
 
 
+def _ran_but_stale(results, members):
+    """The sentence the product exists for. When a stale-state item says a summary
+    still carries an old date, and expected-run saw the job of the same name (the
+    file's stem) leave evidence newer than that date, the job ran without
+    updating its output. Returns the rewritten members, or None."""
+    stale = [(s, it) for s, it, check in members if check == "stale-state" and it.get("says")]
+    if not stale or any(check == "expected-run" for _, _, check in members):
+        return None
+    ran = {}
+    for r in results:
+        if r.check == "expected-run":
+            ran.update({k.lower(): v for k, v in getattr(r, "ran", {}).items()})
+    status, it = stale[0]
+    stem_keys = [k[4:] for k in it["keys"] if k.startswith("job:")]
+    hit = next((ran[k] for k in stem_keys if k in ran), None)
+    if hit is None:
+        return None
+    newest, _evidence = hit
+    says = it["says"]
+    file = next((k[5:] for k in it["keys"] if k.startswith("file:")), "?")
+    if newest.date() <= datetime.date.fromisoformat(says[:10]):
+        return None
+    job = stem_keys[0]
+    text = f"{job} ran at {newest.strftime('%Y-%m-%d %H:%M')} but {file} still says {says[:10]}"
+    action = "The job ran without updating its output; check what it wrote and where."
+    return [(status, dict(it, text=text, action=action), "stale-state")]
+
+
 def incidents(results, previous=None, when=None):
-    """Fold the board's non-green items into incidents: two items sharing a file
-    or a job key (a file's stem is a job key) are one incident. Then set each
+    """Fold the board's non-green items into incidents: two items sharing a key
+    are one incident (a job's name, or a file and its stem), and an item joins one
+    whose keys it links to (expected-run links to its evidence file). Two links
+    never fold: two jobs sharing one log are two incidents. Then set each
     incident's state against the previous heartbeat, and append the incidents
     that were open last run and are gone now, marked resolved."""
     rows = _items(results)
-    groups = []                                     # [(set of keys, [members])]
+    groups = []                                     # [(set of keys, set of links, [members])]
     for check, status, it in rows:
         keys = set(it["keys"]) or {f"check:{check}:{len(groups)}"}
-        hit = [g for g in groups if g[0] & keys]
+        links = set(it.get("links", []))
+        hit = [g for g in groups if g[0] & keys or g[0] & links or g[1] & keys]
         merged = (set().union(*(g[0] for g in hit)) | keys,
-                  sum((g[1] for g in hit), []) + [(status, it, check)])
+                  set().union(*(g[1] for g in hit)) | links,
+                  sum((g[2] for g in hit), []) + [(status, it, check)])
         groups = [g for g in groups if g not in hit] + [merged]
     out = []
-    for keys, members in groups:
+    for keys, _links, members in groups:
         members.sort(key=lambda m: _ORDER.get(m[2], 9))
+        members = _ran_but_stale(results, members) or members
         out.append(Incident(keys, [(s, it) for s, it, _ in members]))
     prev = (previous or {}).get("incidents", []) if previous else []
     when = (when or datetime.date.today()).isoformat()

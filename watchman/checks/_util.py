@@ -36,10 +36,14 @@ class Result:
                 "items": self.items}
 
 
-def item(text, action, files=(), jobs=()):
+def item(text, action, files=(), jobs=(), links=(), **extra):
     """One thing a board line is about. `files` are paths relative to root, `jobs`
     are job names; a file's stem is also a job key, so "inbox-summary.md" and the
-    job "inbox-summary" describe the same thing."""
+    job "inbox-summary" describe the same thing. `links` are keys this item folds
+    with when another item carries them as keys, but never link to link: an
+    expected-run item links to its evidence file, so a stale-state item about
+    that file joins it, while two jobs sharing one log stay two incidents.
+    `extra` fields (say, what a stale file says) ride along for the runner."""
     keys = []
     for f in files:
         f = f.replace(os.sep, "/").rstrip("/")
@@ -49,7 +53,11 @@ def item(text, action, files=(), jobs=()):
             keys.append("job:" + stem.lower())
     for j in jobs:
         keys.append("job:" + j.strip().lower())
-    return {"keys": keys, "text": text, "action": action}
+    out = {"keys": keys, "text": text, "action": action}
+    if links:
+        out["links"] = list(links)
+    out.update(extra)
+    return out
 
 
 def _plural(n, word, plural=None):

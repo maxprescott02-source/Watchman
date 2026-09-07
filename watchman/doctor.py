@@ -133,7 +133,7 @@ def _expected(cfg, specs):
                 continue
             hits = sum(1 for p in paths for line in (read(p) or "").splitlines() if pat.search(line))
             if not hits:
-                yield FIX, f"{name}: pattern {spec['pattern']!r} matches no line in {ev}"
+                yield FIX, f"{name}: pattern {spec['pattern']!r} matches no line in {ev}; fix the pattern or remove it"
                 continue
             yield READY, f"{name}: {spec['schedule']}, last due {last.strftime('%a %d %b %H:%M')}, {_plural(hits, 'matching line')} in {ev}"
         else:

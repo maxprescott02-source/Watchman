@@ -149,7 +149,7 @@ def _install(a, roots):
         print(f"wrote {cfg.rel(dest)} in {folder}; read it each morning, it lists only what needs you")
     guessed = len(guessed_sections(read_text(toml)))
     if guessed:
-        print(f"{_plural(guessed, 'rule')} were guessed and will only warn until you confirm them: "
+        print(f"{_plural(guessed, 'rule')} {'was' if guessed == 1 else 'were'} guessed and will only warn until you confirm {'it' if guessed == 1 else 'them'}: "
               f"{prog} confirm --root {folder}")
     if a.no_schedule:
         print(f"Not scheduled (--no-schedule). Everything else is in place; the nightly line is "

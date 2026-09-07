@@ -33,6 +33,9 @@ MAX_BYTES = 2_000_000
 
 DATE = r"\d{4}-\d{2}-\d{2}"
 STAMP_LINE = re.compile(rf"^({DATE}[T ]\d{{2}}:\d{{2}}(?::\d{{2}})?)\S*\s+(.*)$")
+# What an [[expected]] pattern starts with: the whole stamp, T or space separated,
+# with or without seconds, as one group that expected_run._parse_stamp reads.
+STAMP_GROUP = r"^(\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?)"
 HEAD_MARK = re.compile(
     rf"(?im)^\W*((?:generated|rebuilt|refreshed|updated|last updated|as of|as at|built|compiled|snapshot)\b[^\n\d]{{0,40}}?)"
     rf"({DATE}(?:[T ]\d{{2}}:\d{{2}})?)")
@@ -245,10 +248,22 @@ def discover(root, today=None):
                          f"{r} is rebuilt with a '{prefix.strip()} <date>' line"))
     for r, jobs in logs:
         for job, stamps in jobs.items():
-            if any(job.lower() in e[0].lower() or e[0].lower() in job.lower() for e in expected):
-                continue
             sched, sure = _guess_schedule(stamps, job)
-            pat = r"^(\S+)\s+" + re.escape(job).replace("\\-", "-") + r"\b"
+            same = [i for i, e in enumerate(expected)
+                    if job.lower() in e[0].lower() or e[0].lower() in job.lower()]
+            if same:
+                # The log names the job that rebuilds the summary, so the log is the
+                # evidence that it ran and [stale_state] measures what it wrote. When
+                # the two disagree the board says "ran at <time> but <file> still says <date>".
+                i = same[0]
+                name, old_sched, summary, _pat, had_time, why = expected[i]
+                pat = STAMP_GROUP + r"\s+" + re.escape(job).replace("\\-", "-") + r"\b"
+                expected[i] = (name, old_sched if had_time else sched, r, pat, sure or had_time,
+                               f"{_plural(len(stamps), 'line')} in {r} name '{job}', which rebuilds {summary}")
+                continue
+            # The group captures the whole stamp, whichever form the log uses:
+            # "2026-08-31T23:32 job ok" or "2026-08-31 23:32 job ok".
+            pat = STAMP_GROUP + r"\s+" + re.escape(job).replace("\\-", "-") + r"\b"
             expected.append((job, sched, r, pat, sure,
                              f"{_plural(len(stamps), 'line')} in {r} start with a timestamp and name '{job}'"))
     for job, sched, evidence, pat, sure, why in expected:

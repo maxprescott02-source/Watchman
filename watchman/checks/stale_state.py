@@ -83,7 +83,8 @@ def _date_mode(cfg, c, head, m, tz):
             return Result(NAME, "FAIL", f"{fact} (grace {grace}). Whatever reads "
                           f"{c['file']} is reading a picture from before that change. "
                           + _action(c["file"], due), 1, 1,
-                          items=[item(fact, _action(c["file"], due), files=[c["file"]])])
+                          items=[item(fact, _action(c["file"], due), files=[c["file"]],
+                                      says=stamped.isoformat())])
         return Result(NAME, "PASS", f"{c['file']} says {m.group(1)} · newest source: {which} "
                       f"· within {_plural(grace, 'day')}", 1, 1)
     behind = (today(cfg) - stamped.date()).days
@@ -94,7 +95,8 @@ def _date_mode(cfg, c, head, m, tz):
                       f"this machine may have been off or asleep, or the rebuild may have "
                       f"run without updating it; anything reading the file does not know. "
                       + _action(c["file"], due),
-                      1, 1, items=[item(fact, _action(c["file"], due), files=[c["file"]])])
+                      1, 1, items=[item(fact, _action(c["file"], due), files=[c["file"]],
+                                        says=stamped.isoformat())])
     return Result(NAME, "PASS", f"{c['file']} says {m.group(1)} · {_plural(behind, 'day')} old, "
                   f"within {grace} · measured against today (no sources listed)", 1, 1)
 

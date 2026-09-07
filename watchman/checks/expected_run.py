@@ -84,17 +84,24 @@ def _cron_match(field, value, lo, hi):
     return False
 
 
+class NoMatch(Exception):
+    """The evidence file is there but the pattern matches none of it."""
+
+
 def _evidence_time(cfg, spec, since):
     """Newest evidence for the job at or after `since`: a file matching `evidence`
     modified since then, or a line in `evidence` matching `pattern` that carries a
-    date on or after `since`. Returns (found, description)."""
+    date on or after `since`. Returns (found, description, newest), or raises
+    NoMatch when the evidence exists but the pattern matches no line of it at
+    all: that is the pattern's fault, not the job's."""
     pattern = spec.get("pattern")
     paths = cfg.files([spec["evidence"]]) if any(ch in spec["evidence"] for ch in "*?[") \
         else [cfg.path(spec["evidence"])]
-    newest = None
+    newest, existing = None, 0
     for p in paths:
         if not os.path.exists(p):
             continue
+        existing += 1
         if pattern:
             pat = re.compile(pattern)
             with open(p, encoding="utf-8", errors="replace") as fh:
@@ -113,10 +120,10 @@ def _evidence_time(cfg, spec, since):
             if newest is None or when > newest:
                 newest = when
     if newest is None:
-        if pattern:
-            return False, f"nothing in {spec['evidence']} matches pattern {pattern!r}"
-        return False, f"{spec['evidence']} does not exist (no evidence at all)"
-    return newest >= since, f"newest evidence {newest.strftime('%Y-%m-%d %H:%M')}"
+        if pattern and existing:
+            raise NoMatch(f"pattern matches no line in {spec['evidence']}; fix the pattern or remove it")
+        return False, f"{spec['evidence']} does not exist (no evidence at all)", None
+    return newest >= since, f"newest evidence {newest.strftime('%Y-%m-%d %H:%M')}", newest
 
 
 def _parse_stamp(s, tz):
@@ -158,7 +165,7 @@ def run(cfg):
     if isinstance(specs, dict):
         specs = [specs]
     at = now(cfg)
-    silent, unconfirmed, broken, waiting, ok, items = [], [], [], [], 0, []
+    silent, unconfirmed, broken, waiting, ok, items, ran = [], [], [], [], 0, [], {}
     for spec in specs:
         name = spec.get("name", spec.get("evidence", "?"))
         for key in ("schedule", "evidence"):
@@ -178,9 +185,14 @@ def run(cfg):
             if at < last + grace:
                 waiting.append(name)
                 continue
-            found, why = _evidence_time(cfg, spec, last)
+            try:
+                found, why, newest = _evidence_time(cfg, spec, last)
+            except NoMatch as exc:
+                broken.append((name, f"{name}: {exc}"))
+                continue
             if found:
                 ok += 1
+                ran[name] = (newest, spec["evidence"])
                 continue
             due = last.strftime("%a %d %b %H:%M")
             fact = _silent_fact(name, due, spec["evidence"], why)
@@ -190,7 +202,10 @@ def run(cfg):
             if spec.get("guessed"):
                 action = (f"Confirm the schedule for {name} in watchman.toml (`watchman "
                           f"confirm`), then " + action[0].lower() + action[1:])
-            items.append(item(fact, action, files=[spec["evidence"]], jobs=[name]))
+            # keyed on the job, linked to its evidence: two jobs sharing one log are
+            # two incidents, and a stale file folds in only when it is this
+            # job's evidence or carries this job's name
+            items.append(item(fact, action, jobs=[name], links=["file:" + spec["evidence"]]))
     n = len(specs)
     zone = f"UTC{cfg.utc_offset:+.0f}" if cfg.utc_offset else "UTC"
     tail = (f" · {_plural(n, 'job')} declared, {ok} evidenced, {len(waiting)} inside grace"
@@ -218,7 +233,12 @@ def run(cfg):
             for nm, b in broken:
                 items.append(item(b, actions[-1], jobs=[nm]))
         status = "FAIL" if (silent or broken) else "WARN"
-        return Result(NAME, status, " · ".join(msg) + tail + ". " + " ".join(actions), n, 1,
-                      items=items)
-    return Result(NAME, "PASS", "every declared job left evidence after its last expected "
-                  "fire" + tail, n, 1)
+        r = Result(NAME, status, " · ".join(msg) + tail + ". " + " ".join(actions), n, 1,
+                   items=items)
+    else:
+        r = Result(NAME, "PASS", "every declared job left evidence after its last expected "
+                   "fire" + tail, n, 1)
+    # what the evidenced jobs left and when, so the runner can say "ran at <time>
+    # but <file> still says <date>" when a summary lags its own job
+    r.ran = ran
+    return r
