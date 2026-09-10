@@ -108,7 +108,7 @@ def write_fixture(root, today, utc_offset=0):
         files[f"state/nightly-{_d(t, back)}.json"] = json.dumps({
             "job": "nightly", "day": _d(t, back), "ended": True, "artefact": "now.md",
             "done": {"1-rebuild": {"result": "rebuilt now.md"},
-                     "2-sweep": {"result": "skipped · DEGRADED: session floor over cap",
+                     "2-sweep": {"result": "skipped · DEGRADED: not enough context left to sweep",
                                  "degraded": True}}}, indent=1)
     files["tasks/nightly.md"] = ("# Nightly\n\nRead `now.md`, then append to `log/` via "
                                  "`watchman log`. Close any row in `admin/commitments.md` "

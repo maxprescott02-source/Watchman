@@ -17,7 +17,7 @@ watchman --root FOLDER --findings reports/{name}-{date}.md   # also write the fi
 watchman --root A --root B            # several folders, one board each, exit code is the worst
 watchman install-cron --root FOLDER   # print the crontab line; on a Mac, --write saves a launchd plist and prints the launchctl line
 watchman heartbeat --root FOLDER      # for a second runner: fails if the last mark is stale
-watchman intervene --root FOLDER "restated the rent figure" --cost "a turn" --fix "read now.md first"
+watchman intervene --root FOLDER "restated the rent figure" --cost "a turn" --fix "read the summary first"
 watchman log --root FOLDER "Rent paid" --body "Receipt filed."
 ```
 
@@ -43,7 +43,11 @@ The last command prints the one crontab line (or, on a Mac with `--write`, one l
 
 ## A board
 
-This is the board over the folder the tool came from, 6 September 2026, second run, real findings:
+This is a board over the author's own folder, 6 September 2026, second run, real findings. That
+folder is "brain-ops": a personal operations system, a few hundred markdown files that scheduled
+agent prompts read and rewrite every night. The checks were written against its failures, which is
+why the lines below name files you do not have. Read it for the shape of what a board says, not
+for the file names:
 
 ```
 [  ok  ] heartbeat              last run 0.0h ago reported 6 passed, 2 warned, 5 failed
@@ -63,7 +67,7 @@ This is the board over the folder the tool came from, 6 September 2026, second r
 6 passed · 2 warnings · 5 failed · 13 checks ran
 ```
 
-(Since then the incidents sit above a rule and the summary line counts them.) Two of those lines are things the folder's own smoke test did not report: the second dead path in the maintenance prompt, and the eight duplicate numbers in the sealed August log, which that folder had chosen to seal rather than correct. The full text is in `evidence/board-brain-ops-2026-09-06.txt` and the config that produced it is `brain-ops.toml` at the root.
+(Since then the incidents sit above a rule and the summary line counts them.) Two of those lines are things that folder's own smoke test did not report: the second dead path in the maintenance prompt, and the eight duplicate numbers in the sealed August log, which that folder had chosen to seal rather than correct. The full text is in `evidence/board-brain-ops-2026-09-06.txt` and the config that produced it is `brain-ops.toml` at the root.
 
 ## Prospective test
 
@@ -71,4 +75,4 @@ Everything above is retrospective: a failure happened, a check was written, a si
 
 ## Where it came from
 
-The assertion patterns were learned in brain-ops, a personal operations system run by scheduled agent prompts through August 2026. The rule underneath all of them: a rule an agent is asked to follow is a suggestion; a rule it cannot break is a mechanism. Most of the work is converting the first into the second.
+The checks were learned in that folder, run by scheduled agent prompts through August 2026, one check per failure that had actually happened. The rule underneath all of them: a rule an agent is asked to follow is a suggestion; a rule it cannot break is a mechanism. Most of the work is converting the first into the second.

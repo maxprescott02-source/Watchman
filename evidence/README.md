@@ -3,9 +3,14 @@
 Everything the claims in the main README rest on, kept together so the root of the repository is
 the tool and this is the working out.
 
-Some of it is a board over the author's own folder, published deliberately rather than leaked. It
-names that folder's files and counts, because a claim about catching real failures is worth
-nothing without the failures it caught.
+Some of it is a board over the author's own folder, published deliberately rather than leaked. That
+folder is "brain-ops": a personal operations system of a few hundred markdown files that scheduled
+agent prompts read and rewrite every night. It is where every check came from, one check per
+failure that had actually happened there. The files below name its contents and counts, because a
+claim about catching real failures is worth nothing without the failures it caught.
+
+Nothing here is needed to use the tool. It is here so the claims in the main README can be checked
+rather than taken on trust.
 
 | File | What it is |
 |---|---|

@@ -1,6 +1,8 @@
 # The checks
 
-What each check needs the folder to look like, and the defect each descends from. `expected-run` and `stale-state` are the two `install` proposes; the rest are optional conventions from the author's own folder, each on only when its section is in `watchman.toml`. [README](../README.md) has the sixty-second version.
+What each check needs the folder to look like, and the defect each descends from.
+
+One term recurs below. A **read-first file** is a file something opens before it starts work and then trusts: a summary, a current-state file, a roster, a running total. It is the file that does the most damage when it is quietly out of date, because nothing that reads it can tell. `expected-run` and `stale-state` are the two `install` proposes; the rest are optional conventions from the author's own folder, each on only when its section is in `watchman.toml`. [README](../README.md) has the sixty-second version.
 
 ## The contract
 
@@ -53,7 +55,7 @@ One JSON per job per day in `state_dir`:
 ```json
 {"job": "nightly", "day": "2026-09-06", "ended": true, "artefact": "now.md",
  "done": {"1-rebuild": {"result": "rebuilt now.md"},
-          "2-sweep": {"result": "skipped: floor over cap", "degraded": true}}}
+          "2-sweep": {"result": "skipped: not enough context left to sweep", "degraded": true}}}
 ```
 
 The `degraded` flag is the step's own declaration. Nothing here guesses it from the wording of a skip.

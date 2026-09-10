@@ -1,4 +1,9 @@
-# watchman over brain-ops itself. Lives here because the brain-ops root allows three files. Run: python3 -m watchman --root ~/Desktop/brain-ops --config ~/Desktop/watchman/brain-ops.toml
+# Not a file you need. This is the author's own config, the one that produced the board in
+# evidence/, kept public so that board can be reproduced rather than believed. It watches
+# "brain-ops", a personal operations system of markdown files that scheduled agents rewrite
+# nightly. Yours is written for you by `watchman install FOLDER`; see README.md.
+# It lives at this root rather than in that folder because the brain-ops root allows three files.
+# Run: python3 -m watchman --root ~/Desktop/brain-ops --config ~/Desktop/watchman/brain-ops.toml
 [watchman]
 utc_offset_hours = 10
 heartbeat = ".watchman/heartbeat.json"

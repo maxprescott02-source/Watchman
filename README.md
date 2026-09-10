@@ -22,20 +22,26 @@ $ python3 -m watchman --root FOLDER --json     # exit 0 clean, exit 1 something 
 
 `state` is against last night: `new`, `ongoing` with the date it started, or `resolved`, printed once. `keys` are what the incident is about, so two jobs sharing one log stay two incidents and a job's stale output folds into the job. `action` is a sentence, not a code: it names the file and says what to do with it. There is a human view too, and it is optional; it is further down.
 
-It is for a folder with two to ten scheduled jobs that each leave a file behind (a summary, a close, a ledger, a log line), written by Claude Cowork, Claude for Small Business, ChatGPT Work or an OpenClaw-style agent. Run it from the agent that maintains the folder, from a nightly cron line, or by hand. Nothing about it assumes a person is watching: it is one process reading files and returning a verdict, and whether anything acts on that verdict is your business. Also for the consultant who set that up for five to fifty clients and carries the blame when it drifts. If you have an observability platform and an engineer to wire it, LangSmith, Braintrust, Langfuse or Arize will do most of this over traces; watchman is for the folder with nobody watching it. Pure standard library, Python 3.9 or later, no dependencies, one config file in the folder it watches, and it proposes that file itself. Version 0.2.0, frozen from the first nightly run on 7 September 2026 for the 28-day self-test. The case study it comes from: [29 days of file-backed agents: 125 documented failures](evidence/case-study.md).
+**Who it is for.** A folder with two to ten scheduled jobs that each leave a file behind: a summary, a close, a ledger, a line appended to a log. It does not care what wrote them, whether that is Claude Cowork, Claude for Small Business, ChatGPT Work, an OpenClaw-style agent or a shell script. Run it from the agent that maintains the folder, from a nightly cron line, or by hand. Nothing about it assumes a person is watching: it is one process reading files and returning a verdict, and whether anything acts on that verdict is your business. Also for the consultant who set that up for five to fifty clients and carries the blame when it drifts.
+
+**When not to bother.** If you have an observability platform and an engineer to wire it, LangSmith, Braintrust, Langfuse or Arize will do most of this over traces. Watchman is for the folder with nobody watching it. And if nothing you run leaves a file behind on a schedule, it has nothing to check and will tell you so on the first command.
+
+Pure standard library, Python 3.9 or later, no dependencies, one config file in the folder it watches, and it proposes that file itself. Version 0.2.0, frozen from the first nightly run on 7 September 2026 for the 28-day self-test. The case study it comes from: [29 days of file-backed agents: 125 documented failures](evidence/case-study.md).
 
 If you would rather read one page than a README: [`index.html`](index.html) is a plain-English explainer of the failure this is built for, what it leaves in your folder, and three questions that tell you whether it is any use to you. Open it in a browser after cloning; it is a single file and needs no network.
 
 ## Sixty seconds: what it catches that a passing run does not
 
-Your nightly job rebuilds `now.md` from the log. Tonight the log reached Entry 482. The rebuild ran, exited 0, and wrote a file whose head still says `folded through Entry 470`, because the step that folds new entries skipped itself over a token budget and recorded the skip in a place nothing reads. Every session tomorrow opens `now.md` first and trusts it.
+A job rebuilds `inbox-summary.md` from your mail every night at three. Last night it ran, finished, exited 0 and wrote its usual line to the log. One step inside it failed quietly and wrote nothing, so the file it exists to rebuild still says what it said four days ago. Everything that opens that file tomorrow, you or another agent, will believe it.
 
-Your run logs say: `nightly ok, 2.1s`. Your smoke test says: `now.md present, modified 03:02`. Watchman says:
+Your run log says `2026-09-11 03:00 inbox-summary ok, 2.1s`. Your scheduler says the task succeeded. A smoke test that checks the file is there finds it there. Watchman says:
 
 ```
-[ FAIL ] stale-state   now.md folded through Entry 470, but 12 newer entries are not in it. Every session reads it without them
-[ FAIL ] degraded-steps nightly step 2-sweep degraded 1 night: skipped: floor over cap
+- ongoing (since 2026-09-11): inbox-summary ran at 2026-09-11 03:00 but inbox-summary.md still
+  says 2026-09-07. The job ran without updating its output; check what it wrote and where.
 ```
+
+That sentence is the whole idea: the job ran, and the thing it was supposed to produce did not move. Nothing else you have is looking for that, because every other signal is about the run, and the run was fine.
 
 Trace evals inspect what happened during a run. Watchman verifies durable state before another run trusts it, from the files the agent already leaves: expected-run needs nothing from the agent; degraded-steps needs the job to write its own step-state.
 
