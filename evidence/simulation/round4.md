@@ -44,7 +44,7 @@ new:         prompts/month-end.md names exports/xero.csv, which does not exist. 
 wrote WATCHMAN.md in /tmp/stranger; read it each morning, it lists only what needs you
 `crontab -` refused the line: /var/spool/cron/: mkstemp: Permission denied. Put it in by hand with `crontab -e`:
 
-  31 1 * * * mkdir -p '/tmp/stranger/.watchman' && cd '/sessions/.../mnt/brain-ops/projects/watchman' && '/usr/bin/python3' -m watchman --root '/tmp/stranger' --findings '{root}/.watchman/findings-{date}.md' > '/tmp/stranger/.watchman/last-board.txt' 2>&1
+  31 1 * * * mkdir -p '/tmp/stranger/.watchman' && cd '/sessions/.../projects/watchman' && '/usr/bin/python3' -m watchman --root '/tmp/stranger' --findings '{root}/.watchman/findings-{date}.md' > '/tmp/stranger/.watchman/last-board.txt' 2>&1
 The nightly run is not in place until that line is in; everything else is.
 Done. Watchman checks /tmp/stranger every night at 01:31 and writes WATCHMAN.md when something needs you.
 exit=0
