@@ -27,6 +27,19 @@ from .checks._util import _plural, read as read_text
 NOT_SCHEDULED = ("WATCHMAN IS NOT SCHEDULED. Paste the line above into crontab (crontab -e) "
                  "before you close this terminal. Everything else is in place.")
 
+# heartbeat is watchman's own liveness and no-vacuous-pass is a guard over the other
+# checks. Neither reads a file the operator cares about, so if they are the only two
+# that ran, nothing in this folder is being watched at all.
+SELF_CHECKS = ("heartbeat", "no-vacuous-pass")
+
+NOTHING_TO_WATCH = (
+    "NOTHING HERE IS BEING WATCHED. Every check that reads your files stayed off, because "
+    "nothing in this folder carries a timestamp, a dated line or a rebuilt file that a "
+    "scheduled job leaves behind. Watchman would run every night, find nothing to look at, "
+    "and say `Healthy: nothing needs you.` every morning for as long as you left it running. "
+    "A green light over nothing is the exact failure this tool exists to catch, so it will "
+    "not schedule itself here.")
+
 
 def _findings_path(pattern, root):
     """`{name}` is the folder's own name, `{date}` today, `{root}` the absolute path."""
@@ -145,6 +158,19 @@ def _install(a, roots):
     print(report.render(results))
     print()
     dest = report.attention_path(cfg)
+    if not [r for r in results if r.check not in SELF_CHECKS]:
+        # Do not hand back a morning habit and a nightly schedule over a folder with
+        # nothing in it to check. Say so, and stop, whatever --no-schedule says.
+        print(NOTHING_TO_WATCH)
+        print()
+        print(f"If your scheduled jobs write somewhere else, point it there instead: "
+              f"`{prog} install THAT-FOLDER`.")
+        print(f"If you have no job that runs on a schedule and leaves a file behind, this "
+              f"tool has nothing to offer you, and index.html says so on its first screen.")
+        if dest:
+            print(f"{cfg.rel(dest)} was written and says healthy. It is not evidence of "
+                  f"anything; delete it.")
+        return 4
     if dest:
         print(f"wrote {cfg.rel(dest)} in {folder}; read it each morning, it lists only what needs you")
     guessed = len(guessed_sections(read_text(toml)))

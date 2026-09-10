@@ -385,6 +385,37 @@ class TestInstall(Folder):
         self.assertTrue(out.rstrip().endswith(
             f"Done. Watchman checks {self.root} every night at 02:15 and writes WATCHMAN.md when something needs you."))
 
+    def test_a_folder_with_nothing_to_watch_refuses_to_schedule(self):
+        # the trap this exists to close: point install at an ordinary folder and it used
+        # to write WATCHMAN.md, say "read it each morning", schedule itself, and report
+        # `Healthy: nothing needs you.` every night over nothing at all
+        plain = tempfile.mkdtemp(prefix="watchman-plain-")
+        self.addCleanup(shutil.rmtree, plain, True)
+        for rel, text in {"notes.md": "# Notes\n\ncall Tan on Tuesday\n",
+                          "budget.csv": "item,amount\nrent,2400\n",
+                          "policies/marine.md": "# Marine\n\nterms\n"}.items():
+            p = os.path.join(plain, rel)
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8") as fh:
+                fh.write(text)
+        code, out = run_cli("install", plain, "--at", "02:15")
+        self.assertEqual(code, 4)
+        self.assertIn("NOTHING HERE IS BEING WATCHED", out)
+        self.assertNotIn("read it each morning", out)
+        self.assertNotIn("Done. Watchman checks", out)
+        self.assertNotIn("would append to crontab", out)
+        self.assertIn("install THAT-FOLDER", out)
+        # and it still says it over a folder the operator asked not to schedule
+        code, out = run_cli("install", plain, "--no-schedule")
+        self.assertEqual(code, 4)
+        self.assertIn("NOTHING HERE IS BEING WATCHED", out)
+        self.assertNotIn("Not scheduled (--no-schedule)", out)
+        # a folder that does have a job is untouched by any of this
+        code, out = run_cli("install", self.root, "--no-schedule")
+        self.assertEqual(code, 0)
+        self.assertNotIn("NOTHING HERE IS BEING WATCHED", out)
+        self.assertIn("read it each morning", out)
+
     def test_existing_toml_is_kept_and_no_schedule(self):
         self.write("watchman.toml", '[prompts]\nmirrors = ["prompts/*.md"]\n# mine\n')
         code, out = run_cli("install", self.root, "--no-schedule")
