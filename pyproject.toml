@@ -7,7 +7,7 @@ name = "watchman"
 version = "0.2.0"
 description = "A reliability layer for long-running AI agents that operate on a folder of files."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 license = {text = "MIT"}
 dependencies = []
 

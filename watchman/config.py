@@ -9,7 +9,7 @@ import os
 
 try:
     import tomllib
-except ImportError:                     # Python 3.10: stdlib has no tomllib yet
+except ImportError:                     # Python 3.10 and earlier: stdlib has no tomllib
     from . import toml_min as tomllib
 
 FILENAME = "watchman.toml"

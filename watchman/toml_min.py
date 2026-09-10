@@ -1,4 +1,4 @@
-"""A fallback for Python 3.10, which has no tomllib. Parses the subset watchman.toml uses:
+"""A fallback for Python 3.10 and earlier, which have no tomllib. Parses the subset watchman.toml uses:
 [tables], [[arrays of tables]], quoted strings, numbers, booleans, and flat arrays."""
 import re
 
