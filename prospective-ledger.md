@@ -8,6 +8,9 @@
 | 2026-09-07 | (all) | break in the series | 0.2.0 landed after an outside review of the onboarding: incidents above the board, WATCHMAN.md, `install`, actions on every red line, sleep-aware wording, absence wants 5 dated files, guessed sections cap at WARN, first run is ok not a warning. Rows before and after this line are not the same instrument | simulation/round4.md |
 
 Outcomes: `true positive` (it fired and the failure was real), `false positive` (it fired and nothing was wrong), `missed` (a failure was documented in the log and no check fired), `never fired` (recorded at the end of the window per check).
+| 2026-09-09 | incident | unjudged (new) | now.md folded through Entry 506, but 13 older entries are not in it: [507, 508, 509, 510, 511, 512, 513, 514]. Check the job that writes now.md; it was due after Entry 507 was written. If it is safe to rerun, run it now; if it already ran,  | boards/2026-09-09.txt |
+| 2026-09-09 | incident | unjudged (resolved) | graph-daily step 16 degraded 16 consecutive nights. | boards/2026-09-09.txt |
+
 
 ## External folders
 

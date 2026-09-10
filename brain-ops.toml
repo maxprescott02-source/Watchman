@@ -1,4 +1,4 @@
-# watchman over brain-ops itself. Lives here because the brain-ops root allows three files. Run: python3 -m watchman --root ~/Desktop/brain-ops --config ~/Desktop/brain-ops/projects/watchman/brain-ops.toml
+# watchman over brain-ops itself. Lives here because the brain-ops root allows three files. Run: python3 -m watchman --root ~/Desktop/brain-ops --config ~/Desktop/watchman/brain-ops.toml
 [watchman]
 utc_offset_hours = 10
 heartbeat = ".watchman/heartbeat.json"
