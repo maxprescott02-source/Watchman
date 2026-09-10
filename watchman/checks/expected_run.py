@@ -182,17 +182,39 @@ def run(cfg):
                 broken.append((name, f"{name}: schedule {spec['schedule']!r} never fires"))
                 continue
             grace = datetime.timedelta(minutes=int(spec.get("grace_minutes", 90)))
-            if at < last + grace:
-                waiting.append(name)
-                continue
+            in_grace = at < last + grace
+            if in_grace:
+                # The newest due run is still inside its grace window and cannot be
+                # judged yet, so judge the one before it. Without this step back, a job
+                # whose due time falls within grace_minutes of watchman's own nightly
+                # run is inside grace at every run, and one dead for weeks reads healthy
+                # forever. `_last_fire` returns the fire at or before its argument, so
+                # step back a minute to get the previous one rather than this one.
+                prev = _last_fire(spec["schedule"], last - datetime.timedelta(minutes=1))
+                if prev is None:
+                    waiting.append(name)
+                    continue
+                last = prev
             try:
                 found, why, newest = _evidence_time(cfg, spec, last)
             except NoMatch as exc:
+                if in_grace:
+                    # the pattern's fault, not the job's, and the run that would report
+                    # it has not come due yet
+                    waiting.append(name)
+                    continue
                 broken.append((name, f"{name}: {exc}"))
                 continue
             if found:
                 ok += 1
                 ran[name] = (newest, spec["evidence"])
+                continue
+            if in_grace and newest is None:
+                # it has never left evidence at all, so the run before last is
+                # unevidenced through no fault of its own: a job added today has an
+                # empty yesterday, and a red line on the first night is the one thing
+                # this must never produce
+                waiting.append(name)
                 continue
             due = last.strftime("%a %d %b %H:%M")
             fact = _silent_fact(name, due, spec["evidence"], why)
@@ -236,8 +258,11 @@ def run(cfg):
         r = Result(NAME, status, " · ".join(msg) + tail + ". " + " ".join(actions), n, 1,
                    items=items)
     else:
-        r = Result(NAME, "PASS", "every declared job left evidence after its last expected "
-                   "fire" + tail, n, 1)
+        # do not claim evidence nothing produced: with every job still inside its first
+        # grace window there is nothing yet to have left any
+        headline = ("every declared job left evidence after its last expected fire" if ok
+                    else "no declared job has reached a due run outside its grace window yet")
+        r = Result(NAME, "PASS", headline + tail, n, 1)
     # what the evidenced jobs left and when, so the runner can say "ran at <time>
     # but <file> still says <date>" when a summary lags its own job
     r.ran = ran

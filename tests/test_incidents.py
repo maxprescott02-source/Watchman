@@ -507,7 +507,10 @@ class TestReviewRoundTwo(Folder):
 
     def test_3_two_jobs_sharing_a_log_are_two_incidents(self):
         self.runs_log([f"{self.d(3)} 07:00:00 ledger-sync ok\n", f"{self.d(3)} 08:00:00 chaser ok\n"])
-        self.write("watchman.toml", '[watchman]\nutc_offset_hours = 0\n\n'
+        # this machine's zone, not UTC: self.d() counts back from the local date, so a
+        # hardcoded 0 makes the check's "today" a day behind the fixture's wherever
+        # local and UTC dates differ, and the age assertions below are off by one
+        self.write("watchman.toml", f'[watchman]\nutc_offset_hours = {local_utc_offset():g}\n\n'
                    '[[expected]]\nname = "ledger-sync"\nschedule = "daily 00:00"\nevidence = "runs.log"\n'
                    "pattern = '^(\\S+ \\S+) ledger-sync'\ngrace_minutes = 0\n\n"
                    '[[expected]]\nname = "chaser"\nschedule = "daily 00:00"\nevidence = "runs.log"\n'
