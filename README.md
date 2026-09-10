@@ -4,21 +4,14 @@ Watchman is a check your agent runs over the folder it works in. It reads the fi
 
 ```
 $ python3 -m watchman --root FOLDER --json     # exit 0 clean, exit 1 something is wrong
-{
- "incidents": [
-  {
-   "state": "ongoing",
-   "since": "2026-09-09",
-   "status": "FAIL",
+{"incidents": [{"state": "ongoing", "since": "2026-09-09", "status": "FAIL",
    "keys": ["job:quote-digest", "file:quote-digest.md"],
-   "text": "quote-digest left no expected evidence for its Fri 11 Sep 06:12 run (newest evidence 2026-09-08 06:12): it may not have run, this machine may have been off or asleep, or it may have run without updating runs.log; quote-digest.md is 3 days old (it says 2026-09-08, today is 2026-09-11)",
-   "action": "Check the quote-digest job. If it is safe to rerun, run it now; if it already ran, check why runs.log was not updated."
-  }
- ],
- "results": [ ... one per check, with status, message, population and floor ... ],
- "counts": {"PASS": 3, "WARN": 1, "FAIL": 1}
-}
+   "text": "quote-digest left no expected evidence for its Fri 11 Sep 06:12 run ...; quote-digest.md
+            is 3 days old (it says 2026-09-08, today is 2026-09-11)",
+   "action": "Check the quote-digest job. If it is safe to rerun, run it now; if it already ran,
+              check why runs.log was not updated."}], "results": [ ... ], "counts": { ... }}
 ```
+(wrapped to fit) `results` carries one entry per check with its status, message, population and floor; `counts` totals them.
 
 `state` is against last night: `new`, `ongoing` with the date it started, or `resolved`, printed once. `keys` are what the incident is about, so two jobs sharing one log stay two incidents and a job's stale output folds into the job. `action` is a sentence, not a code: it names the file and says what to do with it. There is a human view too, and it is optional; it is further down.
 
@@ -45,6 +38,31 @@ That sentence is the whole idea: the job ran, and the thing it was supposed to p
 
 Trace evals inspect what happened during a run. Watchman verifies durable state before another run trusts it, from the files the agent already leaves: expected-run needs nothing from the agent; degraded-steps needs the job to write its own step-state.
 
+## Try it before you point it at anything of yours
+
+No folder of scheduled jobs yet? Build the case above in three lines: a job that ran every night, including this morning, whose output stopped moving four days ago.
+
+```
+mkdir ~/watchman-try && cd ~/watchman-try
+for n in 4 3 2 1 0; do date -v-${n}d "+%Y-%m-%d 03:00 nightly-brief ok"; done > runs.log
+printf '# Brief\n\nGenerated %s 03:00\n' "$(date -v-4d +%Y-%m-%d)" > brief.md
+```
+
+(`date -v-4d` is macOS. On Linux it is `date -d "4 days ago"`.) Then, from the repository:
+
+```
+python3 -m watchman install ~/watchman-try --no-schedule
+```
+
+`--no-schedule` means it looks and reports but touches no scheduler. It works out what the folder contains on its own, and the line to look for is near the top:
+
+```
+new:  brief ran at 2026-09-11 03:00 but brief.md still says 2026-09-07. The job ran without
+      updating its output; check what it wrote and where.
+```
+
+Delete `~/watchman-try` when you have seen it. For a bigger sample that turns on every check, including the advanced ones: `python3 -m watchman init --demo sandbox`.
+
 ## Install
 
 One line. `FOLDER` is the folder your agent works over. Run it from this directory (or `pip install .` first, and `watchman` replaces `python3 -m watchman`).
@@ -65,7 +83,6 @@ then have whatever maintains the folder run `python3 -m watchman --root FOLDER -
 Last checked: 2026-09-07 06:02 UTC+10
 
 - new: inbox-summary ran at 2026-09-07 06:01 but inbox-summary.md still says 2026-09-04. The job ran without updating its output; check what it wrote and where.
-- new: ledger-sync left no expected evidence for its Mon 07 Sep 07:00 run (newest evidence 2026-09-06 07:00): it may not have run, this machine may have been off or asleep, or it may have run without updating runs.log. Check the ledger-sync job. If it is safe to rerun, run it now; if it already ran, check why runs.log was not updated.
 
 full board: .watchman/last-board.txt
 ```
@@ -74,7 +91,7 @@ One line per underlying thing, not per check: a job's log line and the summary i
 
 ## If your scheduled task has ever silently stopped
 
-`expected-run` needs nothing from your agent. Declare when a job should fire and one file it touches:
+`expected-run` needs nothing from your agent. `install` writes this for you; by hand it is four lines, plus a `pattern` when the evidence is a log the job appends to rather than a file it rewrites:
 
 ```toml
 [[expected]]
@@ -82,29 +99,16 @@ name = "nightly close"
 schedule = "daily 03:00"          # or "weekdays 09:00", "mon,thu 18:30", "monthly last 23:30", or 5-field cron
 evidence = "reports/close-*.md"   # a glob it writes, or a log it appends to
 grace_minutes = 90
+pattern = '^(\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?)\s+close\b'   # optional; first group is the timestamp
 ```
 
-For a log the job appends to, add a `pattern` whose first group captures the timestamp, in either form the log uses (`2026-08-31T23:32 close ok` or `2026-08-31 23:32 close ok`):
+Without a pattern the file's modification time is the evidence. A pattern matching no line of a file that exists is reported as a config problem to fix, never as a missed run. Both timestamp forms are accepted, `2026-08-31T23:32 close ok` and `2026-08-31 23:32 close ok`.
 
-```toml
-pattern = '^(\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?)\s+close\b'
-```
-
-Without a pattern, the file's modification time is the evidence. A pattern that matches no line of an existing file is reported as a config problem to fix, never as a missed run.
-
-If the last expected fire has passed and nothing matching `evidence` was touched since, the board goes red with the time it was due, worded as "left no expected evidence for its <due> run: it may not have run, this machine may have been off or asleep, or it may have run without updating <file>", because from the folder those three look the same, and the action is to check the job, rerun it if that is safe, and if it already ran, find out why the file did not move. A scheduler that says healthy is not sufficient evidence; the file the job touches is. This is the detector for the pattern in anthropics/claude-code issues #55378 and #47899.
+If the last expected fire has passed and nothing matching `evidence` was touched since, the board goes red with the time it was due, worded as "left no expected evidence for its <due> run: it may not have run, this machine may have been off or asleep, or it may have run without updating <file>", because from the folder those three look the same. A scheduler that says healthy is not sufficient evidence; the file the job touches is. This is the detector for the pattern in anthropics/claude-code issues #55378 and #47899.
 
 ## Step by step
 
-The same path as separate commands, for people who want to see each step:
-
-```
-python3 -m watchman init --discover FOLDER         # reads the folder, writes FOLDER/watchman.toml, asks nothing
-python3 -m watchman doctor --root FOLDER           # one line per section: can it check this folder, and what is missing
-python3 -m watchman --root FOLDER                  # the board. Red lines name the file and say what to do
-```
-
-The full command list, running several client folders from one line, and the self-test are in [docs/usage.md](docs/usage.md). Tests: `python3 -m unittest discover -s tests`.
+`install` is those three in one: `init --discover FOLDER` writes the config, `doctor --root FOLDER` says what each section can check, `--root FOLDER` prints the board. Run them separately if you want to see each step. The full command list, running several client folders from one line, and the self-test are in [docs/usage.md](docs/usage.md). Tests: `python3 -m unittest discover -s tests`.
 
 ## Advanced checks
 
