@@ -63,11 +63,11 @@ This is the board over the folder the tool came from, 6 September 2026, second r
 6 passed · 2 warnings · 5 failed · 13 checks ran
 ```
 
-(Since then the incidents sit above a rule and the summary line counts them.) Two of those lines are things the folder's own smoke test did not report: the second dead path in the maintenance prompt, and the eight duplicate numbers in the sealed August log, which that folder had chosen to seal rather than correct. The full text is in `board-brain-ops-2026-09-06.txt` and the config that produced it is `brain-ops.toml`.
+(Since then the incidents sit above a rule and the summary line counts them.) Two of those lines are things the folder's own smoke test did not report: the second dead path in the maintenance prompt, and the eight duplicate numbers in the sealed August log, which that folder had chosen to seal rather than correct. The full text is in `evidence/board-brain-ops-2026-09-06.txt` and the config that produced it is `brain-ops.toml` at the root.
 
 ## Prospective test
 
-Everything above is retrospective: a failure happened, a check was written, a similar failure was caught. That is the weakest kind of evidence. So the checks were frozen at 0.2.0 from the first nightly run on 7 September 2026 and run nightly, over the folder it came from, for 28 days until 5 October 2026. The result will be published as a confusion matrix: true positives, false positives, failures it missed, checks that never fired. `prospective-ledger.md` at the top of the repository carries the columns and fills nightly.
+Everything above is retrospective: a failure happened, a check was written, a similar failure was caught. That is the weakest kind of evidence. So the checks were frozen at 0.2.0 from the first nightly run on 7 September 2026 and run nightly, over the folder it came from, for 28 days until 5 October 2026. The result will be published as a confusion matrix: true positives, false positives, failures it missed, checks that never fired. `evidence/prospective-ledger.md` carries the columns and fills nightly.
 
 ## Where it came from
 
