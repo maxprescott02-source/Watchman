@@ -4,6 +4,8 @@ Watchman tells you the next morning when one of your scheduled file-producing jo
 
 It is for one operator with two to ten scheduled jobs that each leave a file behind (a summary, a close, a ledger, a log line), running Claude Cowork, Claude for Small Business, ChatGPT Work or an OpenClaw-style agent, who has already been burnt by a stale output nobody noticed. And for the consultant who set that up for five to fifty clients and carries the blame when it drifts. If you have an observability platform and an engineer to wire it, LangSmith, Braintrust, Langfuse or Arize will do most of this over traces; watchman is for the folder with nobody watching it. Pure standard library, Python 3.10 or later, no dependencies, one config file in the folder it watches, and it proposes that file itself. Version 0.2.0, frozen from the first nightly run on 7 September 2026 for the 28-day self-test. The case study it comes from: [29 days of file-backed agents: 125 documented failures](case-study.md).
 
+If you would rather read one page than a README: [`index.html`](index.html) is a plain-English explainer of the failure this is built for, what it leaves in your folder, and three questions that tell you whether it is any use to you. Open it in a browser after cloning; it is a single file and needs no network.
+
 ## Sixty seconds: what it catches that a passing run does not
 
 Your nightly job rebuilds `now.md` from the log. Tonight the log reached Entry 482. The rebuild ran, exited 0, and wrote a file whose head still says `folded through Entry 470`, because the step that folds new entries skipped itself over a token budget and recorded the skip in a place nothing reads. Every session tomorrow opens `now.md` first and trusts it.
