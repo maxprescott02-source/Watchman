@@ -414,7 +414,7 @@ class TestInstall(Folder):
         code, out = run_cli("install", self.root, "--no-schedule")
         self.assertEqual(code, 0)
         self.assertNotIn("NOTHING HERE IS BEING WATCHED", out)
-        self.assertIn("read it each morning", out)
+        self.assertIn("--json`, which exits 1 when something is wrong", out)
 
     def test_existing_toml_is_kept_and_no_schedule(self):
         self.write("watchman.toml", '[prompts]\nmirrors = ["prompts/*.md"]\n# mine\n')
@@ -482,7 +482,12 @@ class TestReadme(unittest.TestCase):
             text = fh.read()
         head = text[:text.index("## Step by step")]
         self.assertIn("python3 -m watchman install FOLDER", head)
-        self.assertIn("then read `FOLDER/WATCHMAN.md` each morning; it only lists what needs you", head)
+        # the agent surface is the first screen, not a habit: the one command, what it
+        # exits, and the incident an agent acts on, all above the fold
+        self.assertIn("python3 -m watchman --root FOLDER --json", head)
+        self.assertIn("exit 0 clean, exit 1 something is wrong", head)
+        self.assertIn('"action": "Check the quote-digest job.', head)
+        self.assertNotIn("read `FOLDER/WATCHMAN.md` each morning", head)
         self.assertNotIn("install-cron", head)
         self.assertIn("## Step by step", text)
         self.assertIn("A scheduler that says healthy is not sufficient evidence; the file the job touches is.", text)
@@ -492,8 +497,11 @@ class TestReadme(unittest.TestCase):
         with open(os.path.join(TOP, "README.md"), encoding="utf-8") as fh:
             lines = [l for l in fh.read().splitlines() if l.strip()]
         self.assertEqual(lines[0], "# watchman")
-        first = "Watchman tells you the next morning when one of your scheduled file-producing jobs silently stopped updating its output, and tells you what to do next."
+        first = "Watchman is a check your agent runs over the folder it works in. It reads the files your scheduled jobs leave behind, decides whether the durable state there is still valid, and exits 1 with one incident per real problem, each carrying the action that resolves it."
         self.assertTrue(lines[1].startswith(first + " Trace systems tell you whether a run behaved correctly."))
+        # WATCHMAN.md is a view, not the product: nothing may depend on it
+        text = "\n".join(lines)
+        self.assertIn('`attention_file = ""` in `watchman.toml` turns it off and changes nothing', text)
 
 
 class TestReviewRoundTwo(Folder):

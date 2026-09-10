@@ -1,8 +1,28 @@
 # watchman
 
-Watchman tells you the next morning when one of your scheduled file-producing jobs silently stopped updating its output, and tells you what to do next. Trace systems tell you whether a run behaved correctly. Watchman checks whether the durable state the next run will trust is still valid.
+Watchman is a check your agent runs over the folder it works in. It reads the files your scheduled jobs leave behind, decides whether the durable state there is still valid, and exits 1 with one incident per real problem, each carrying the action that resolves it. Trace systems tell you whether a run behaved correctly. Watchman checks whether the durable state the next run will trust is still valid.
 
-It is for one operator with two to ten scheduled jobs that each leave a file behind (a summary, a close, a ledger, a log line), running Claude Cowork, Claude for Small Business, ChatGPT Work or an OpenClaw-style agent, who has already been burnt by a stale output nobody noticed. And for the consultant who set that up for five to fifty clients and carries the blame when it drifts. If you have an observability platform and an engineer to wire it, LangSmith, Braintrust, Langfuse or Arize will do most of this over traces; watchman is for the folder with nobody watching it. Pure standard library, Python 3.10 or later, no dependencies, one config file in the folder it watches, and it proposes that file itself. Version 0.2.0, frozen from the first nightly run on 7 September 2026 for the 28-day self-test. The case study it comes from: [29 days of file-backed agents: 125 documented failures](case-study.md).
+```
+$ python3 -m watchman --root FOLDER --json     # exit 0 clean, exit 1 something is wrong
+{
+ "incidents": [
+  {
+   "state": "ongoing",
+   "since": "2026-09-09",
+   "status": "FAIL",
+   "keys": ["job:quote-digest", "file:quote-digest.md"],
+   "text": "quote-digest left no expected evidence for its Fri 11 Sep 06:12 run (newest evidence 2026-09-08 06:12): it may not have run, this machine may have been off or asleep, or it may have run without updating runs.log; quote-digest.md is 3 days old (it says 2026-09-08, today is 2026-09-11)",
+   "action": "Check the quote-digest job. If it is safe to rerun, run it now; if it already ran, check why runs.log was not updated."
+  }
+ ],
+ "results": [ ... one per check, with status, message, population and floor ... ],
+ "counts": {"PASS": 3, "WARN": 1, "FAIL": 1}
+}
+```
+
+`state` is against last night: `new`, `ongoing` with the date it started, or `resolved`, printed once. `keys` are what the incident is about, so two jobs sharing one log stay two incidents and a job's stale output folds into the job. `action` is a sentence, not a code: it names the file and says what to do with it. There is a human view too, and it is optional; it is further down.
+
+It is for a folder with two to ten scheduled jobs that each leave a file behind (a summary, a close, a ledger, a log line), written by Claude Cowork, Claude for Small Business, ChatGPT Work or an OpenClaw-style agent. Run it from the agent that maintains the folder, from a nightly cron line, or by hand. Nothing about it assumes a person is watching: it is one process reading files and returning a verdict, and whether anything acts on that verdict is your business. Also for the consultant who set that up for five to fifty clients and carries the blame when it drifts. If you have an observability platform and an engineer to wire it, LangSmith, Braintrust, Langfuse or Arize will do most of this over traces; watchman is for the folder with nobody watching it. Pure standard library, Python 3.10 or later, no dependencies, one config file in the folder it watches, and it proposes that file itself. Version 0.2.0, frozen from the first nightly run on 7 September 2026 for the 28-day self-test. The case study it comes from: [29 days of file-backed agents: 125 documented failures](case-study.md).
 
 If you would rather read one page than a README: [`index.html`](index.html) is a plain-English explainer of the failure this is built for, what it leaves in your folder, and three questions that tell you whether it is any use to you. Open it in a browser after cloning; it is a single file and needs no network.
 
@@ -27,13 +47,13 @@ One line. `FOLDER` is the folder your agent works over. Run it from this directo
 python3 -m watchman install FOLDER
 ```
 
-then read `FOLDER/WATCHMAN.md` each morning; it only lists what needs you.
+then have whatever maintains the folder run `python3 -m watchman --root FOLDER --json` and act on the incidents, or let the nightly line `install` schedules do it and read what it leaves. `--quiet` drops the passing lines, `--no-write` leaves the folder untouched, and `--findings PATTERN` puts the write-up where you want it.
 
 `install` reads the folder and proposes `FOLDER/watchman.toml` (asking nothing), says which checks fit, prints the board, writes `WATCHMAN.md`, and schedules the nightly run (launchd on a Mac, cron elsewhere). It ends with "Done. Watchman checks FOLDER every night at 01:31 and writes WATCHMAN.md when something needs you." only once it has read the schedule back; if the scheduler refused or is missing, the last two lines are the line to paste and `WATCHMAN IS NOT SCHEDULED. ...`, and it exits 3. Where it guessed, a section carries `guessed = true` and can warn but never fail until `python3 -m watchman confirm --root FOLDER` settles it. If nothing in the folder carries a timestamp, a dated line or a rebuilt file that a scheduled job leaves behind, there is nothing here for it to check: it says so, refuses to schedule itself, and exits 4, rather than reporting `Healthy: nothing needs you.` every morning over a folder it is not watching. `--at HH:MM` moves the time; `--no-schedule` does everything but the last step. If you use Cowork's own scheduler and will not touch cron, `launch/cowork-task-prompt.md` has a task you can paste.
 
-## WATCHMAN.md
+## The human view, if you want one
 
-It looks like this when something is wrong, and says `Healthy: nothing needs you.` when nothing is (the file stays; a file that disappears looks like a tool that died). Its first line is always when watchman last ran, so a reader can tell when watchman itself has stopped:
+`WATCHMAN.md` is the same incidents in a file at the top of the folder, for a person who would rather read them than parse them. It is written every run and nothing depends on it: `attention_file = ""` in `watchman.toml` turns it off and changes nothing else. It looks like this when something is wrong, and says `Healthy: nothing needs you.` when nothing is (the file stays; a file that disappears looks like a tool that died). Its first line is always when watchman last ran, so a reader can tell when watchman itself has stopped:
 
 ```
 Last checked: 2026-09-07 06:02 UTC+10

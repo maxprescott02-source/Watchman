@@ -208,7 +208,7 @@ Summary as at <span class="bad">2026-09-08</span>
 
 <section>
   <h2>What you get</h2>
-  <p class="sub">It runs once a night over the folder your jobs write into, and leaves one plain file at the top of it. That is the whole product. There is no dashboard to open and nothing to log into.</p>
+  <p class="sub">It runs once a night over the folder your jobs write into and returns a verdict: nothing wrong, or a list of what is, each with the thing to do about it. If an agent maintains the folder, it reads that verdict directly and you never see any of this. If you would rather read it yourself, it also leaves one plain file at the top of the folder. There is no dashboard to open and nothing to log into.</p>
 
   <div class="file">
     <div class="name">WATCHMAN.md <span class="tag">a real one</span></div>
@@ -287,7 +287,7 @@ Summary as at <span class="bad">2026-09-08</span>
     <li><b>It reads the folder</b> and proposes the config itself, asking you nothing.</li>
     <li><b>It prints the board</b> so you see what it found before you trust it.</li>
     <li><b>It schedules the nightly run</b> and only says it is done once it has read the schedule back.</li>
-    <li><b>You read WATCHMAN.md</b> at the top of the folder each morning. Nothing else.</li>
+    <li><b>Something reads the result.</b> Your agent, from <span class="mono">--json</span> and the exit code, or you, from WATCHMAN.md at the top of the folder. Nothing else.</li>
   </ol>
 </section>
 

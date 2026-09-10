@@ -172,7 +172,9 @@ def _install(a, roots):
                   f"anything; delete it.")
         return 4
     if dest:
-        print(f"wrote {cfg.rel(dest)} in {folder}; read it each morning, it lists only what needs you")
+        print(f"wrote {cfg.rel(dest)} in {folder}, which lists only what needs you. Whatever maintains "
+              f"this folder can read the same thing from `{prog} --root {folder} --json`, which exits 1 "
+              f"when something is wrong.")
     guessed = len(guessed_sections(read_text(toml)))
     if guessed:
         print(f"{_plural(guessed, 'rule')} {'was' if guessed == 1 else 'were'} guessed and will only warn until you confirm {'it' if guessed == 1 else 'them'}: "
